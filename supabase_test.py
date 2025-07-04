@@ -4,6 +4,12 @@ import pandas as pd
 url = 'https://hkfkdskgcaeviqhcarqi.supabase.co'
 api_key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhrZmtkc2tnY2FldmlxaGNhcnFpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE1NDk1MjEsImV4cCI6MjA2NzEyNTUyMX0.qrQW5NVXMLBEMgFPXYPrC9Ka5V2xcr23qqBMBG9QQ1E'
 
+# 테스트
+# url: str = "https://qqgwukrxlczwzxudsvgh.supabase.co"
+# api_key: str = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFxZ3d1a3J4bGN6d3p4dWRzdmdoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTExMzczMTIsImV4cCI6MjA2NjcxMzMxMn0.Vj10LPV2kZxXrRIaH5u0KPJQPKjkN2gsSh2oTKz6kXY'
+
+
+
 supabase: Client = create_client(url, api_key)
 
 def get_stock_data_from_db():
@@ -53,3 +59,13 @@ def get_all_data(table_name):
         all_data.extend(data)
         offset += limit
     return all_data
+
+# TB_ADMIN 테이블에서 데이터 조회
+def get_tb_admin_adminlist():
+    response = supabase.table("tb_admin").select("*").execute()
+    admins = response.data
+    for admin in admins:
+        print(admin["ADMIN_NO"], admin["LOGIN_ID"])
+
+
+get_tb_admin_adminlist()
