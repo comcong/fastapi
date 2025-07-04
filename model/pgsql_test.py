@@ -61,11 +61,7 @@ def get_all_data(table_name):
     return all_data
 
 # TB_ADMIN 테이블에서 데이터 조회
-def get_tb_admin_adminlist():
+def list_admin():
     response = supabase.table("tb_admin").select("*").execute()
     admins = response.data
-    for admin in admins:
-        print(admin["ADMIN_NO"], admin["LOGIN_ID"])
-
-
-get_tb_admin_adminlist()
+    return admins
