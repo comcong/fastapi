@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>실시간 숫자</title>
+</head>
+<body>
+    <h1>온도: <span id="temperature">-</span>°C</h1>
+    <h1>습도: <span id="humidity">-</span>%</h1>
+    <script>
+        const ws = new WebSocket("ws://localhost:8000/ws");
+        ws.onmessage = function(event) {
+        const data = JSON.parse(event.data);  // JSON 문자열을 객체로 변환
+
+        // 각각의 데이터를 구별해서 사용
+        document.getElementById("temperature").textContent = data.temperature;
+        document.getElementById("humidity").textContent = data.humidity;
+        };
+    </script>
+</body>
+</html>

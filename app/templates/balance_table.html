@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>계좌 잔고 및 평가</title>
+    <style>
+        body { font-family: '맑은 고딕', Arial, sans-serif; }
+        h2 { margin-top: 40px; }
+        table { border-collapse: collapse; margin-bottom: 30px; min-width: 600px; }
+        th, td { border: 1px solid #888; padding: 6px 12px; text-align: center; }
+        th { background: #f0f0f0; }
+        tr:nth-child(even) { background: #fafafa; }
+    </style>
+</head>
+<body>
+    <h1>계좌 잔고 및 평가</h1>
+
+    <h2>계좌 잔고</h2>
+    <table>
+        <thead>
+            <tr>
+                {% for h in output1_headers %}
+                <th>{{ output1_headers_ko[h] if h in output1_headers_ko else h }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in output1 %}
+            <tr>
+                {% for h in output1_headers %}
+                <td>{{ row[h] }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h2>계좌 평가</h2>
+    <table>
+        <thead>
+            <tr>
+                {% for h in output2_headers %}
+                <th>{{ output2_headers_ko[h] if h in output2_headers_ko else h }}</th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in output2 %}
+            <tr>
+                {% for h in output2_headers %}
+                <td>{{ row[h] }}</td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

@@ -1,0 +1,12 @@
+uvicorn
+fastapi
+# pandas
+requests
+supabase
+pydantic_settings
+# schedule
+# yfinance
+Jinja2
+# pycryptodome
+# pykrx  # 코스피 종목 코드 불러오기
+pytz

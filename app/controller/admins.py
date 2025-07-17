@@ -1,6 +1,6 @@
 
 from fastapi import APIRouter
-from model import pgsql_test
+from app.model import pgsql_test
 
 router = APIRouter(
     prefix="/admins",
