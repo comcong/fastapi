@@ -10,7 +10,7 @@ from threading import Lock
 from app.services.auth_service import parse_expiration_date
 
 # 국내주식 잔고 조회
-def get_domestic_balance():
+def get_domestic_balance(request=None):
     # 토큰 가져오기
     access_token = get_access_token()
     # print('토큰:', access_token)
@@ -47,7 +47,6 @@ def get_domestic_balance():
         try:
             response = requests.get(url, headers=headers, params=params)
             result = response.json()
-            print('result', result)
 
             # API 응답에 오류가 있고, 재시도 가능한 경우
             if 'rt_cd' in result and result['rt_cd'] != '0' and attempt < max_retries - 1:
@@ -59,7 +58,7 @@ def get_domestic_balance():
                 continue
 
             # 데이터 처리 함수 호출
-            return process_balance_data(result)
+            return process_balance_data(result, request)
 
         except Exception as e:
             print(f"잔고 조회 중 오류 발생 (시도 {attempt + 1}/{max_retries}): {str(e)}")
@@ -69,7 +68,7 @@ def get_domestic_balance():
                 raise
 
 
-def process_balance_data(raw_data):
+def process_balance_data(raw_data, request=None):
     """잔고 데이터 처리 및 필터링"""
 
     # output1 한국어 헤더 매핑 (전체)
@@ -186,7 +185,8 @@ def process_balance_data(raw_data):
         output2_headers = []
 
     # 최종 결과 반환
-    return {
+    result = {
+        "request": request,
         'output1': output1_data,
         'output1_headers': output1_headers,
         'output1_headers_ko': output1_headers_ko,
@@ -195,4 +195,9 @@ def process_balance_data(raw_data):
         'output2_headers_ko': output2_headers_ko
     }
 
+    # request가 있으면 템플릿용 데이터로 변환
+    if request:
+        result['request'] = request
+
+    return result
 
