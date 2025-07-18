@@ -1,3 +1,4 @@
+import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.templating import Jinja2Templates
 from app.websocket.realtime_websocket import websocket_endpoint
@@ -25,6 +26,4 @@ async def jango(request: Request):
 app.websocket("/ws")(websocket_endpoint)
 
 if __name__ == "__main__":
-    import uvicorn
-
     uvicorn.run(app, host="0.0.0.0", port=8000)
