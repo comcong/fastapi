@@ -1,5 +1,4 @@
 import requests
-import json
 import time
 from datetime import datetime, timedelta
 import pytz
@@ -48,7 +47,7 @@ def get_access_token():
             if response.data:
                 token_data = response.data[0]
 
-                # 이 부분을 수정 - auth_service의 parse_expiration_date 함수 사용
+                # auth_service의 parse_expiration_date 함수 사용
                 expiration_time = parse_expiration_date(token_data["expiration_time"])
 
                 if now < expiration_time:  # 토큰이 아직 유효한 경우
