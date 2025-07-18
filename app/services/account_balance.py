@@ -1,23 +1,14 @@
 import requests
 from app.services.access_token import get_access_token
-import json
 import time
-from datetime import datetime, timedelta
-# import pytz
 from app.core.config import settings
-from app.db.supabase import supabase
-from threading import Lock
-from app.services.auth_service import parse_expiration_date
+
 
 # 국내주식 잔고 조회
 def get_domestic_balance(request=None):
     # 토큰 가져오기
     access_token = get_access_token()
-    # print('토큰:', access_token)
-
     url = f"{settings.kis_base_url}/uapi/domestic-stock/v1/trading/inquire-balance"
-    # print('url', url)
-
     headers = {
         "Content-Type": "application/json; charset=utf-8",
         "authorization": f"Bearer {access_token}",
@@ -25,7 +16,6 @@ def get_domestic_balance(request=None):
         "appsecret": settings.KIS_APPSECRET,
         "tr_id": settings.TR_ID,  # 국내주식 잔고 조회 TR ID
     }
-    # print('headers', headers)
 
     params = {
         "CANO": settings.KIS_CANO,
@@ -40,7 +30,6 @@ def get_domestic_balance(request=None):
         "CTX_AREA_FK100": "",
         "CTX_AREA_NK100": ""
     }
-    # print('params', params)
 
     max_retries = 2
     for attempt in range(max_retries):
@@ -195,7 +184,6 @@ def process_balance_data(raw_data, request=None):
         'output2_headers_ko': output2_headers_ko
     }
 
-    # request가 있으면 템플릿용 데이터로 변환
     if request:
         result['request'] = request
 
