@@ -62,8 +62,8 @@ def process_balance_data(raw_data, request=None):
 
     # output1 한국어 헤더 매핑 (전체)
     output1_headers_ko = {
-        'pdno': '상품번호',
-        'prdt_name': '상품명',
+        'pdno': '종목코드',
+        'prdt_name': '종목명',
         'trad_dvsn_name': '매매구분명',
         'bfdy_buy_qty': '전일매수수량',
         'bfdy_sll_qty': '전일매도수량',
@@ -80,16 +80,14 @@ def process_balance_data(raw_data, request=None):
         'evlu_erng_rt': '평가수익율',
         'loan_dt': '대출일자',
         'loan_amt': '대출금액',
-        'stln_slng_chgs': '대주매매수수료',
-        'expd_dt': '만료일자',
+        'stln_slng_chgs': '대주매각대금',
+        'expd_dt': '만기일자',
         'fltt_rt': '등락율',
         'bfdy_cprs_icdc': '전일대비증감',
         'item_mgna_rt_name': '종목증거금율명',
         'grta_rt_name': '보증금율명',
         'sbst_pric': '대용가격',
-        'stck_loan_unpr': '주식대출단가',
-        'cano': '종합계좌번호',
-        'acnt_prdt_cd': '계좌상품코드'
+        'stck_loan_unpr': '주식대출단가'
     }
 
     # output2 한국어 헤더 매핑 (전체)
@@ -104,43 +102,36 @@ def process_balance_data(raw_data, request=None):
         'bfdy_sll_amt': '전일매도금액',
         'thdt_sll_amt': '금일매도금액',
         'd2_auto_rdpt_amt': 'D+2자동상환금액',
-        'bfdy_tlex_amt': '전일제비용금액',
+        'bfdy_tlex_amt':    '전일제비용금액',
         'thdt_tlex_amt': '금일제비용금액',
         'tot_loan_amt': '총대출금액',
-        'scts_evlu_amt': '유가증권평가금액',
+        'scts_evlu_amt': '유가평가금액',
         'tot_evlu_amt': '총평가금액',
         'nass_amt': '순자산금액',
         'fncg_gld_auto_rdpt_yn': '융자금자동상환여부',
         'pchs_amt_smtl_amt': '매입금액합계금액',
         'evlu_amt_smtl_amt': '평가금액합계금액',
         'evlu_pfls_smtl_amt': '평가손익합계금액',
-        'all_rcmd_code': '전체추천코드',
-        'bfdy_fncg_sttl_amt': '전일융자결제금액',
-        'bfdy_gld_sttl_amt': '전일대출결제금액',
-        'cma_evlu_amt_icdc': 'CMA평가금액증감',
+        'tot_stln_slng_chgs': '총대주매각대금',
         'bfdy_tot_asst_evlu_amt': '전일총자산평가금액',
         'asst_icdc_amt': '자산증감액',
         'asst_icdc_erng_rt': '자산증감수익율',
-        'cano': '종합계좌번호',
-        'acnt_prdt_cd': '계좌상품코드'
     }
 
     # 제외할 컬럼들을 한글로 정의
     output1_exclude_columns_ko = [
-        '종합계좌번호',
-        '계좌상품코드',
         '대출일자',
         '대출금액',
-        '대주매매수수료',
-        '만료일자',
-        '등락율'
+        '대주매각대금',
+        '만기일자',
+        '보증금율명',
+        '대용가격'
     ]
 
     output2_exclude_columns_ko = [
-        '종합계좌번호',
-        '계좌상품코드',
+        'CMA평가금액',
         '융자금자동상환여부',
-        '전체추천코드'
+        '총대주매각대금'
     ]
 
     # 한글 컬럼명을 영문 컬럼명으로 변환
