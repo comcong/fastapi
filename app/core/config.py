@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     KIS_CANO: str = Field(default="00000000", description="계좌번호 앞 8자리")
     KIS_ACNT_PRDT_CD: str = Field(default="01", description="계좌번호 뒤 2자리")
 
-    # 모의투자 여부 (환경변수에서 읽어옴)
+    # 모의투자 여부
     KIS_USE_MOCK: bool = Field(default=True, description="모의투자 사용 여부")
 
     class Config:
