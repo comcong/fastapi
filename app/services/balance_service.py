@@ -9,15 +9,14 @@ from app.db.supabase import supabase
 from threading import Lock
 from app.services.auth_service import parse_expiration_date
 
-
+# 국내주식 잔고 조회
 def get_domestic_balance():
-    """국내주식 잔고 조회"""
     # 토큰 가져오기
     access_token = get_access_token()
-    print('토큰:', access_token)
+    # print('토큰:', access_token)
 
     url = f"{settings.kis_base_url}/uapi/domestic-stock/v1/trading/inquire-balance"
-    print('url', url)
+    # print('url', url)
 
     headers = {
         "Content-Type": "application/json; charset=utf-8",
@@ -25,9 +24,8 @@ def get_domestic_balance():
         "appkey": settings.KIS_APPKEY,
         "appsecret": settings.KIS_APPSECRET,
         "tr_id": settings.TR_ID,  # 국내주식 잔고 조회 TR ID
-        # "custtype": "P"
     }
-    print('headers', headers)
+    # print('headers', headers)
 
     params = {
         "CANO": settings.KIS_CANO,
@@ -42,7 +40,7 @@ def get_domestic_balance():
         "CTX_AREA_FK100": "",
         "CTX_AREA_NK100": ""
     }
-    print('params', params)
+    # print('params', params)
 
     max_retries = 2
     for attempt in range(max_retries):
