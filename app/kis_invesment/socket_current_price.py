@@ -3,7 +3,6 @@ import asyncio
 import json
 from app.services.approval_key import get_approval_key
 from app.core.config import settings
-# from app.websocket.realtime_websocket import process_data
 
 async def get_stock_price(stock_code='000270', callback=None):
     approval_key = get_approval_key()
@@ -43,18 +42,15 @@ async def get_stock_price(stock_code='000270', callback=None):
                     response = await ws.recv()         # 데이터 수신 대기
                     data = json.loads(response)        # JSON 파싱
 
-                    # 데이터 전달
+                    # 콜백이 비동기 함수인지 확인하고 적절히 호출
                     if callback:
-                        callback(data)
+                        if asyncio.iscoroutinefunction(callback):
+                            await callback(data)  # 비동기 콜백은 await로 호출
+                        else:
+                            callback(data)        # 동기 콜백은 직접 호출
 
                 except Exception as e:
                     print(f"데이터 수신 중 오류 발생: {e}")
                     break
     except Exception as e:
         print(f"웹소켓 연결 중 오류 발생: {e}")
-
-
-
-
-
-

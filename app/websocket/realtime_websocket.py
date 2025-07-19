@@ -26,20 +26,19 @@ async def websocket_endpoint(websocket: WebSocket):
         print("클라이언트 연결 종료")
 
 
-async def current_price_endpoint():
+async def current_price_endpoint(websocket: WebSocket):
+    await websocket.accept()
 
-    # 콜백 함수 정의 - get_stock_price에서 데이터를 받을 때 호출됩니다
-    def data_callback(data):
+    # 비동기 콜백 함수로 변경
+    async def data_callback(data):
         print(f"콜백을 통해 받은 데이터: {data}")
+        try:
+            await websocket.send_text(json.dumps(data))
+        except Exception as e:
+            print(f"데이터 전송 실패: {e}")
 
-        # 여기서 받은 데이터로 추가 처리를 할 수 있습니다
-        # 예: 데이터베이스 저장, 다른 서비스로 전송 등
-
-    # get_stock_price 함수에 콜백 함수를 전달하여 실행
+    # get_stock_price 함수에 비동기 콜백 함수를 전달하여 실행
     await get_stock_price('005930', data_callback)
-
-if __name__ == "__main__":
-    asyncio.run(current_price_endpoint())
 
 
 
