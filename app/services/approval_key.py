@@ -19,6 +19,12 @@ _websocket_key_cache: Dict[str, Optional[Union[str, datetime]]] = {
 _websocket_last_refresh_time: float = 0  # 마지막 접속키 갱신 시간
 _websocket_refresh_lock = Lock()  # 동시성 방지 락
 
+if settings.KIS_USE_MOCK == True:
+    base_url = "https://openapivts.koreainvestment.com:29443" # 모의
+elif settings.KIS_USE_MOCK == False:
+    base_url = "https://apivts.koreainvestment.com:9443"      # 실전
+
+url = f"{base_url}/oauth2/Approval"
 
 def get_approval_key() -> str:
     """한국투자증권 웹소켓 접속키 발급 또는 캐시된 접속키 반환"""
@@ -101,7 +107,6 @@ def refresh_websocket_key_with_retry(record_id: Optional[str] = None, max_retrie
     """웹소켓 접속키 갱신을 재시도하며 처리"""
     for attempt in range(max_retries):
         try:
-            url = f"{settings.kis_base_url}/oauth2/Approval"
             data = {
                 "grant_type": "client_credentials",
                 "appkey": settings.KIS_APPKEY,

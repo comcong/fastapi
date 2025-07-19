@@ -5,10 +5,10 @@ from app.core.config import settings
 
 # 국내주식 잔고 조회
 def get_balance(request=None):
-    if settings.KIS_USE_MOCK:
+    if settings.KIS_USE_MOCK == True:
         base_url = "https://openapivts.koreainvestment.com:29443"
         tr_id = 'VTTC8434R'
-    else:
+    elif settings.KIS_USE_MOCK == False:
         base_url = "https://apivts.koreainvestment.com:9443"
         tr_id = 'TTTC8434R'
     # 토큰 가져오기

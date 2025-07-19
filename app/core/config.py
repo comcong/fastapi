@@ -11,8 +11,7 @@ class Settings(BaseSettings):
     PROJECT_DESCRIPTION: str = "해외주식 잔고 조회 및 주식 예측 API"
     PROJECT_VERSION: str = "1.0.0"
 
-    # 디버그 모드
-    DEBUG: bool = Field(default=False, description="디버그 모드 활성화 여부")
+    DEBUG: bool = Field(default=False, description="디버그 모드 활성화 여부") # 디버그 모드
     CORS_ORIGINS: List[str] = Field(default=["*"], description="CORS 허용 도메인")
     SUPABASE_URL: str = Field(..., description="Supabase URL")
     SUPABASE_KEY: str = Field(..., description="Supabase 키")
@@ -25,6 +24,7 @@ class Settings(BaseSettings):
 
     # 모의투자 여부
     KIS_USE_MOCK: bool = Field(default=True, description="모의투자 사용 여부")
+
 
     class Config:
         env_file = ".env"
