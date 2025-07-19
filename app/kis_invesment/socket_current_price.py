@@ -3,9 +3,9 @@ import asyncio
 import json
 from app.services.approval_key import get_approval_key
 from app.core.config import settings
+# from app.websocket.realtime_websocket import process_data
 
-
-async def get_stock_price(stock_code='000270'):
+async def get_stock_price(stock_code='000270', callback=None):
     approval_key = get_approval_key()
     tr_id = 'H0STCNT0'  # 실시간 현재가 조회
 
@@ -42,7 +42,10 @@ async def get_stock_price(stock_code='000270'):
                 try:
                     response = await ws.recv()         # 데이터 수신 대기
                     data = json.loads(response)        # JSON 파싱
-                    print(f"실시간 데이터 수신: {data}")  # 실제 데이터 처리
+
+                    # 데이터 전달
+                    if callback:
+                        callback(data)
 
                 except Exception as e:
                     print(f"데이터 수신 중 오류 발생: {e}")
@@ -50,10 +53,8 @@ async def get_stock_price(stock_code='000270'):
     except Exception as e:
         print(f"웹소켓 연결 중 오류 발생: {e}")
 
-    return None
 
-if __name__ == "__main__":
-    asyncio.run(get_stock_price())
+
 
 
 
