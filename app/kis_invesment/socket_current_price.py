@@ -40,7 +40,11 @@ async def get_stock_price(stock_code='000270', callback=None):
             while True:
                 try:
                     response = await ws.recv()         # 데이터 수신 대기
-                    data = json.loads(response)        # JSON 파싱
+                    data = response
+                    if isinstance(data, str):
+                        print('문자열입니다.')
+                    elif isinstance(data, dict):
+                        print('딕셔너리입니다.')
 
                     # 콜백이 비동기 함수인지 확인하고 적절히 호출
                     if callback:
