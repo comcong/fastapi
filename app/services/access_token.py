@@ -83,7 +83,14 @@ def refresh_token_with_retry(record_id=None, max_retries=3):
     """토큰 갱신을 재시도하며 처리"""
     for attempt in range(max_retries):
         try:
-            url = f"{settings.kis_base_url}/oauth2/tokenP"
+            # base_url 설정
+            if settings.KIS_USE_MOCK == True:
+                base_url = "https://openapivts.koreainvestment.com:29443"
+            elif settings.KIS_USE_MOCK == False:
+                base_url = "https://apivts.koreainvestment.com:9443"
+
+            url = f"{base_url}/oauth2/Approval"
+
             data = {
                 "grant_type": "client_credentials",
                 "appkey": settings.KIS_APPKEY,
