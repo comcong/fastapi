@@ -9,7 +9,7 @@ async def current_price_endpoint(websocket: WebSocket):
     async def data_callback(data):
         print(f"콜백을 통해 받은 데이터: {data}")
         if type(data) == dict:
-            await websocket.send_text(json.dumps(data))
+            await websocket.send_text(json.dumps(data , ensure_ascii=False))
         elif type(data) == str:
             await websocket.send_text(data)
 
