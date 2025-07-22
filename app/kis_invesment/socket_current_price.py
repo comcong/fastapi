@@ -30,15 +30,11 @@ async def get_stock_price(stock_code, callback=None):
             while True:
                 try:
                     data = (await ws.recv())       # 데이터 수신 대기
-                    print(data)
+                    print('최초 수신 데이터: ', data)
                     try:
                         data = json.loads(data)
-                    except Exception as e:
-                        print(e)
-                    try:
+                    except:
                         data = stockspurchase(data)
-                    except Exception as e:
-                        print(e)
 
                     # 데이터 전송
                     if callback:

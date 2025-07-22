@@ -37,22 +37,19 @@ async def get_transaction(HTS_ID, callback=None):
             while True:
                 try:
                     data = (await ws.recv())       # 데이터 수신 대기
-                    print('원본데이터: ', data)
+                    print('최초 수신 데이터: ', data)
                     try:
                         data = json.loads(data)
-                        iv = data['body']['iv']
-                        key = data['body']['key']
+                        if 'body' in data.keys():
+                            iv = data['body']['output']['iv']
+                            key = data['body']['output']['key']
 
                     except :
-                        pass
-
-                    try:
                         cipher_text = data.split('|')[3]
                         print('암호데이터: ', cipher_text)
                         data = aes_cbc_base64_dec(key, iv, cipher_text)
                         print('해독데이터: ', data)
-                    except:
-                        pass
+
 
                     # 데이터 전송
                     if callback:
