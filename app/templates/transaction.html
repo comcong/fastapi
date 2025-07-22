@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>체결 통보</title>
+</head>
+<body>
+    <h1>체결 통보</h1>
+    <div id="data" style="background: #f0f0f0; padding: 10px; white-space: pre-wrap;"></div>
+
+    <script>
+        const ws = new WebSocket("ws://localhost:8000/ws/transaction");
+        const dataDiv = document.getElementById("data");
+
+        ws.onmessage = function(event) {
+            // 받은 데이터를 그대로 화면에 출력
+            dataDiv.textContent = event.data;
+        };
+    </script>
+</body>
+</html>

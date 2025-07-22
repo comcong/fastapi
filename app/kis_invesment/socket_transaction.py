@@ -1,0 +1,114 @@
+import websockets
+import json
+from app.services.approval_key import get_approval_key
+from app.core.config import settings
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import unpad
+from base64 import b64decode
+
+
+menulist = "고객ID|계좌번호|주문번호|원주문번호|매도매수구분|정정구분|주문종류|주문조건|주식단축종목코드|체결수량|체결단가|주식체결시간|거부여부|체결여부|접수여부|지점번호|주문수량|계좌명|호가조건가격|주문거래소구분|실시간체결창표시여부|필러|신용구분|신용대출일자|체결종목명40|주문가격"
+
+async def get_transaction(HTS_ID, callback=None):
+    approval_key = get_approval_key()
+    tr_type = '1'
+    if settings.KIS_USE_MOCK == True:  # 모의
+        base_url = "ws://ops.koreainvestment.com:31000"
+        tr_id = 'H0STCNI9'
+    elif settings.KIS_USE_MOCK == False: # 실전
+        base_url = "ws://ops.koreainvestment.com:21000"
+        tr_id = 'H0STCNI0'
+
+    # 서버 URL 설정 (모의/실전)
+    base_url = 'ws://ops.koreainvestment.com:31000' if settings.KIS_USE_MOCK else 'ws://ops.koreainvestment.com:21000'
+    url = f"{base_url}/tryitout/H0STCNI0"
+
+
+    # 요청 데이터 구성
+    senddata = req_data(approval_key, tr_id, HTS_ID, tr_type)
+
+    try:
+        async with websockets.connect(url) as ws:  # 웹소켓 연결
+            print(f"한국투자증권 WebSocket 서버에 연결되었습니다: {url}")
+
+            # 데이터 전송
+            await ws.send(json.dumps(senddata))
+            print(f"요청 데이터 전송 완료: {HTS_ID} 실시간 체결 통보 요청")
+
+            # 데이터 수신 루프
+            while True:
+                # {'header': {'tr_id': 'H0STCNI9', 'tr_key': 'sanare78', 'encrypt': 'N'},
+                #  'body': {'rt_cd': '0', 'msg_cd': 'OPSP0000', 'msg1': 'SUBSCRIBE SUCCESS',
+                #           'output': {'iv': '80e85b05c1899390', 'key': 'tgwamzheswuhrijydnzkvsjaymxcecgx'}}}
+                try:
+                    data = (await ws.recv())       # 데이터 수신 대기
+                    print('원본데이터: ', data)
+                    try:
+                        data = json.loads(data)
+                        iv = data['body']['iv']
+                        key = data['body']['key']
+
+                    except :
+                        pass
+
+                    try:
+                        cipher_text = data.split('|')[3]
+                        print('암호데이터: ', cipher_text)
+                        # preety_data = aes_cbc_base64_dec(key, iv, cipher_text)
+                        # print('해독데이터: ', preety_data)
+                    except:
+                        pass
+
+                    # try:
+                    #     data = stockspurchase(data)
+                    # except Exception as e:
+                    #     print(e)
+
+                    # 데이터 전송
+                    if callback:
+                        await callback(preety_data)  # 비동기 콜백은 await로 호출
+
+                except Exception as e:
+                    print(f"데이터 수신 중 오류 발생: {e}")
+                    break
+    except Exception as e:
+        print(f"웹소켓 연결 중 오류 발생: {e}")
+
+
+def req_data(approval_key, tr_id, HTS_ID, tr_type):
+    # 요청 데이터 구성
+    senddata = {
+        "header": {
+            "approval_key": approval_key,
+            "custtype": "P",
+            "tr_type": tr_type,
+            "content-type": "utf-8"
+        },
+        "body": {
+            "input": {
+                "tr_id": tr_id,
+                "tr_key": HTS_ID
+            }
+        }
+    }
+    return senddata
+
+# 주식체결처리 출력라이브러리
+def stockspurchase(data):  # 주식 현재가 데이터 정제
+    # data = '0|H0STCNT0|001|005930^120651^67050^5^-750^-1.11^67620.79^68100^68500^67000^67100^67000^200^8293601^560819903500^25773^26194^421^67.01^4648298^3114657^1^0.38^46.80^090008^5^-1050^090433^5^-1450^100933^2^50^20250722^20^N^122087^257541^794914^1365374^0.14^10573794^78.44^0^^68100'
+    data_keys = menulist.split('|')
+    data_values = data.split('|')[3].split('^')
+    result = dict(zip(data_keys, data_values))   # zip으로 묶어서 딕셔너리 생성
+    return result
+
+# AES256 DECODE
+def aes_cbc_base64_dec(key, iv, cipher_text):
+    """
+    :param key:  str type AES256 secret key value
+    :param iv: str type AES256 Initialize Vector
+    :param cipher_text: Base64 encoded AES256 str
+    :return: Base64-AES256 decodec str
+    """
+
+    cipher = AES.new(key.encode('utf-8'), AES.MODE_CBC, iv.encode('utf-8'))
+    return bytes.decode(unpad(cipher.decrypt(b64decode(cipher_text)), AES.block_size))

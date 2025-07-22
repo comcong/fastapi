@@ -2,7 +2,7 @@ import uvicorn
 from app.core.config import settings
 from fastapi import FastAPI, Request
 from fastapi.templating import Jinja2Templates
-from app.websocket.realtime_websocket import current_price_endpoint
+from app.websocket.realtime_websocket import current_price_endpoint, transaction_endpoint
 from pathlib import Path
 from app.kis_invesment.account_balance import get_balance
 app = FastAPI(
@@ -29,9 +29,14 @@ async def jango(request: Request):
 async def current_price(request: Request):
     return templates.TemplateResponse("current_price.html", {"request": request})
 
+@app.get("/transaction")
+async def transaction(request: Request):
+    return templates.TemplateResponse("transaction.html", {"request": request})
+
 
 # WebSocket 엔드포인트 등록
 app.websocket("/ws/current_price")(current_price_endpoint)
+app.websocket("/ws/transaction")(transaction_endpoint)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
