@@ -46,6 +46,8 @@ async def get_transaction(HTS_ID, callback=None):
                         if 'body' in data.keys():
                             iv = data['body']['output']['iv']
                             key = data['body']['output']['key']
+                        else:
+                            pass
 
                     except :
                         cipher_text = data.split('|')[3]
@@ -86,4 +88,13 @@ def req_data(approval_key, tr_id, HTS_ID, tr_type):
 # AES256 DECODE
 def aes_cbc_base64_dec(key, iv, cipher_text):
     cipher = AES.new(key.encode('utf-8'), AES.MODE_CBC, iv.encode('utf-8'))
-    return bytes.decode(unpad(cipher.decrypt(b64decode(cipher_text)), AES.block_size))
+    data = bytes.decode(unpad(cipher.decrypt(b64decode(cipher_text)), AES.block_size))
+    return stockspurchase(data)
+
+# 체결 통보 출력라이브러리
+def stockspurchase(data):  # 체결통보 데이터 정제
+    data = 'sanare78^5014279001^0000005008^^02^0^00^0^069500^0000000001^000043295^144700^0^2^2^00950^000000001^신명진^1Y^10^^KODEX200^000044000'
+    data_keys = menulist.split('|')
+    data_values = data.split('^')
+    result = dict(zip(data_keys, data_values))   # zip으로 묶어서 딕셔너리 생성
+    return result
