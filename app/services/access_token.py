@@ -81,6 +81,7 @@ def get_access_token():
 
 def refresh_token_with_retry(record_id=None, max_retries=3):
     """토큰 갱신을 재시도하며 처리"""
+    print('엑세스 토큰 신규발급')
     for attempt in range(max_retries):
         try:
             # base_url 설정

@@ -81,6 +81,7 @@ def get_approval_key():
 
 def refresh_key_with_retry(record_id=None, max_retries=3):
     """접속키 갱신을 재시도하며 처리"""
+    print('엑세스 토큰 신규발급')
     for attempt in range(max_retries):
         try:
             # base_url 설정
@@ -97,7 +98,7 @@ def refresh_key_with_retry(record_id=None, max_retries=3):
                 "secretkey": settings.KIS_APPSECRET
             }
 
-            response = requests.post(url, json=data, headers=headers)
+            response = requests.post(url, json=data, headers=data)
             response_data = response.json()
 
             if 'approval_key' not in response_data:
