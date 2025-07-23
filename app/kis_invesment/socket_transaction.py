@@ -43,7 +43,7 @@ async def get_transaction(HTS_ID, callback=None):
                     print('최초 수신 데이터: ', data)
                     try:
                         data = json.loads(data)
-                        if 'body' in data.keys():
+                        if 'body' in data and 'output' in data['body']:
                             iv = data['body']['output']['iv']
                             key = data['body']['output']['key']
                         else:
