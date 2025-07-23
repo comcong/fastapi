@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     KIS_APPSECRET: str = Field(..., description="한국투자증권 API 앱시크릿")
     KIS_CANO: str = Field(default="00000000", description="계좌번호 앞 8자리")
     KIS_ACNT_PRDT_CD: str = Field(default="01", description="계좌번호 뒤 2자리")
+    KIS_HTS_ID: str = Field(default="", description="HTS_ID")
 
     # 모의투자 여부
     KIS_USE_MOCK: bool = Field(default=True, description="모의투자 사용 여부")

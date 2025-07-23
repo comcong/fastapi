@@ -15,7 +15,7 @@ async def current_price_endpoint(websocket: WebSocket):
             await websocket.send_text(data)
 
     # get_stock_price 함수에 비동기 콜백 함수를 전달하여 실행
-    await get_stock_price('005930', data_callback)
+    await get_stock_price(data_callback)
 
 
 async def transaction_endpoint(websocket: WebSocket):
@@ -30,5 +30,5 @@ async def transaction_endpoint(websocket: WebSocket):
             await websocket.send_text(data)
 
     # get_stock_price 함수에 비동기 콜백 함수를 전달하여 실행
-    await get_transaction('sanare78', data_callback)
+    await get_transaction(data_callback)
 
