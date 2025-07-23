@@ -1,6 +1,6 @@
 import websockets
 import json
-from app.services.approval_key import get_approval_key
+from app.services.kis_auth import get_approval_key
 from app.core.config import settings
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
@@ -9,6 +9,9 @@ from base64 import b64decode
 menulist = "고객ID|계좌번호|주문번호|원주문번호|매도매수구분|정정구분|주문종류|주문조건|주식단축종목코드|체결수량|체결단가|주식체결시간|거부여부|체결여부|접수여부|지점번호|주문수량|계좌명|호가조건가격|주문거래소구분|실시간체결창표시여부|필러|신용구분|신용대출일자|체결종목명40|주문가격"
 
 async def get_transaction(HTS_ID, callback=None):
+    print('====================================')
+    print('get_transaction 실행')
+    print('====================================')
     approval_key = get_approval_key()
     tr_type = '1'
     if settings.KIS_USE_MOCK == True:  # 모의

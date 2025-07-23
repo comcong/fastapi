@@ -1,10 +1,13 @@
 import requests
-from app.services.access_token import get_access_token
 import time
 from app.core.config import settings
+from app.services.kis_auth import get_access_token
 
 # 국내주식 잔고 조회
 def get_balance(request=None):
+    print('====================================')
+    print('get_balance 실행')
+    print('====================================')
     if settings.KIS_USE_MOCK == True:
         base_url = "https://openapivts.koreainvestment.com:29443"
         tr_id = 'VTTC8434R'
@@ -13,6 +16,7 @@ def get_balance(request=None):
         tr_id = 'TTTC8434R'
     # 토큰 가져오기
     access_token = get_access_token()
+
     url = f"{base_url}/uapi/domestic-stock/v1/trading/inquire-balance"
     headers = {
         "Content-Type": "application/json; charset=utf-8",
