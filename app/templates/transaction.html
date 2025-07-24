@@ -9,11 +9,11 @@
     <div id="data" style="background: #f0f0f0; padding: 10px; white-space: pre-wrap;"></div>
 
     <script>
-        const ws = new WebSocket("ws://localhost:8000/ws/transaction");
+        const protocol = location.protocol === "https:" ? "wss" : "ws";
+        const ws = new WebSocket(`${protocol}://${location.host}/ws/transaction`);
         const dataDiv = document.getElementById("data");
 
         ws.onmessage = function(event) {
-            // 받은 데이터를 그대로 화면에 출력
             dataDiv.textContent = event.data;
         };
     </script>

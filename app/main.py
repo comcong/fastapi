@@ -34,6 +34,7 @@ async def transaction(request: Request):
     return templates.TemplateResponse("transaction.html", {"request": request})
 
 
+
 # WebSocket 엔드포인트 등록
 app.websocket("/ws/current_price")(current_price_endpoint)
 app.websocket("/ws/transaction")(transaction_endpoint)
