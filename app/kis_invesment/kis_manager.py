@@ -20,15 +20,14 @@ class kis_api:
         self.url = base_url + add_url
 
         if add_url == '/tryitout/H0STCNT0':    # 실시간 체결가
-            self.__tr_id = 'H0STCNT0'
             self.__tr_key = self.__code_list
+            self.__tr_id = 'H0STCNT0'
         elif add_url == '/tryitout/H0STCNI0':  # 실시간 체결통보
+            self.__tr_key = self.__HTS_ID
             if settings.KIS_USE_MOCK == True:   # 모의계좌
                 self.__tr_id = 'H0STCNI9'
             elif settings.KIS_USE_MOCK == False: # 실전계좌
                 self.__tr_id = 'H0STCNI0'
-            self.__tr_key = self.__HTS_ID
-
 
 
     async def subscribe_transaction(self, ws):
@@ -37,10 +36,11 @@ class kis_api:
         print('====================================')
 
 
-        self.__tr_type = '1'                                            # 1: 등록,     2: 해제
+        tr_type = '1'                                            # 1: 등록,     2: 해제
 
         # 요청 데이터 구성
-        senddata = self.__req_data(self.__tr_type)
+        senddata = self.__req_data(self.__tr_key, tr_type)
+        print('체결등록 전송데이터', senddata)
         await ws.send(json.dumps(senddata))
 
     async def subscribe_price(self, ws):
@@ -51,8 +51,10 @@ class kis_api:
         tr_type = '1'                                            # 1: 등록,     2: 해제
 
         # 요청 데이터 구성
-        senddata = self.__req_data(tr_type)
-        await ws.send(json.dumps(senddata))
+        for tr_key in self.__code_list:
+            senddata = self.__req_data(tr_key, tr_type)
+            print('현재가등록 전송데이터', senddata)
+            await ws.send(json.dumps(senddata))
 
 
 
@@ -81,7 +83,7 @@ class kis_api:
                 data = self.__price_data_cleaning(data)
             return data
 
-    def __req_data(self, tr_type): # 구독 신청/해제
+    def __req_data(self, tr_key, tr_type): # 구독 신청/해제
 
         # 요청 데이터 구성
         senddata = {
@@ -94,7 +96,7 @@ class kis_api:
             "body": {
                 "input": {
                     "tr_id": self.__tr_id,
-                    "tr_key": self.__HTS_ID
+                    "tr_key": tr_key
                 }
             }
         }
@@ -122,3 +124,9 @@ class kis_api:
         data_values = data.split('|')[3].split('^')
         result = dict(zip(data_keys, data_values))  # zip으로 묶어서 딕셔너리 생성
         return result
+
+
+    # 나중에 통합
+    async def subscribe(self, ws, tr_type='1'):
+        senddata = self.__req_data(tr_type)
+        await ws.send(json.dumps(senddata))
