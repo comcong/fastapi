@@ -4,67 +4,61 @@ from fastapi import WebSocket as fws
 from app.kis_invesment.kis_manager import kis_api
 import asyncio
 
-connected_clients = set()
-task = None
+connected_clients = set()  # 접속한 클라이언트들의 리스트
+task = None                # combined_kis_task() 중복 실행을 방지하기 위한 변수
 code_list = ['015760', '052690', '005380', '000270', '027360']
 
-
+# 실시간 체결알람 엔드포인트
 async def endpoint(fws: fws):
-    global task
+    global task                 # 전역변수로 선언해야 값 변경 가능
 
-    await fws.accept()
-    connected_clients.add(fws)
+    await fws.accept()          # 클라이언트에 fws 연결 허용
+    connected_clients.add(fws)  # fws에 접속하면 클라이언트 리스트에 추가
     print("새로운 클라이언트 추가")
 
+    # task 값이 None일 때만  combined_kis_task 실행; 이후에는 실행 방지
     if task is None or task.done():
-        task = asyncio.create_task(combined_kis_task())
+        task = asyncio.create_task(combined_kis_task()) # 비동기 작업(Task) 객체를 담는다.
 
     try:
         while True:
-            await fws.receive_text()
+            await fws.receive_text()     # 클라이언트 대기
     except Exception as e:
         print("클라이언트 오류:", e)
     finally:
-        connected_clients.remove(fws)
+        connected_clients.remove(fws)    # 종료된 클라이언트 제거
         print("클라이언트 제거됨")
 
 
 async def combined_kis_task():
-    tr_id_price = 'H0STCNT0'
-    tr_id_transaction = 'H0STCNI0'
+    tr_id_price = 'H0STCNT0'       # 실시간 현재가 tr_id
+    tr_id_transaction = 'H0STCNI9' # 실시간 체결알람 tr_id
 
-    # 하나의 kis_api 인스턴스를 사용하되, 각 tr_id별로 따로 초기화
-    price_api = kis_api(tr_id_price, code_list)
-    transaction_api = kis_api(tr_id_transaction)
+    kis = kis_api()  # kis 객체 생성
 
-    async with websockets.connect(price_api.url) as ws:
-        print("✅ 하나의 KIS 웹소켓에 연결됨")
+    async with websockets.connect(kis.url) as ws:  # kis 웹소켓에 연결
+        print("KIS 웹소켓에 연결됨")
 
-        # 순차적으로 두 개 구독 요청
-        await price_api.subscribe_price(ws)
-        await transaction_api.subscribe_transaction(ws)
+        # ws 객체에 순차적으로 구독 요청
+        await kis.subscribe(ws=ws, tr_id=tr_id_transaction)                   # 실시간 체결알람 구독 등록
+        await kis.subscribe(ws=ws, tr_id=tr_id_price, code_list=code_list)    # 실시간 현재가 구독 등록
 
         while True:
             try:
                 raw_data = await ws.recv()
-                print("수신된 데이터: ", raw_data)
+                print("수신된 원본 데이터: ", raw_data)
+                data = json.loads(raw_data)
+                tr_id = data['header']['tr_id']
 
                 # 먼저 현재가 데이터 시도
-                data = await price_api.make_data(raw_data)
-                if not data:
-                    # 현재가로 파싱 실패 → 체결로 시도
-                    data = await transaction_api.make_data(raw_data)
-
-                if data:
-                    print("가공 데이터: ", data)
-                    for client in connected_clients.copy():
-                        try:
-                            await client.send_text(json.dumps(data, ensure_ascii=False))
-                        except Exception as e:
-                            print("클라이언트 전송 실패:", e)
-                            connected_clients.remove(client)
-                else:
-                    print("알 수 없는 데이터:", raw_data)
+                data = await kis.make_data(tr_id=tr_id, data=raw_data)
+                print("수신된 가공 데이터: ", data)
+                for client in connected_clients.copy():   # 각 클라이언트들에게 데이터 전송
+                    try:
+                        await client.send_text(json.dumps(data, ensure_ascii=False))
+                    except Exception as e:
+                        print("클라이언트 전송 실패:", e)
+                        connected_clients.remove(client)
 
             except Exception as e:
                 print("웹소켓 수신 오류:", e)

@@ -33,10 +33,7 @@ async def current_price(request: Request):
 async def transaction(request: Request):
     return templates.TemplateResponse("transaction.html", {"request": request})
 
-
-
-# WebSocket 엔드포인트 등록
-# app.websocket("/ws/current_price")(price_endpoint)
+# fastapi 엔드포인트 등록
 app.websocket("/ws/transaction")(endpoint)
 
 if __name__ == "__main__":
