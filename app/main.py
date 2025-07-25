@@ -43,4 +43,4 @@ if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
-# uvicorn app.main:app --reload > log.txt 2>&1
+# uvicorn app.main:app --reload > log.txt 2>&1  # 로그 파일 남길때 커맨드창에서 실행
