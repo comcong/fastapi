@@ -33,8 +33,9 @@ async def endpoint(fws: fws):
 
 
 async def kis_transaction():
-    add_url = '/tryitout/H0STCNI0'
-    transaction = kis_api(add_url)
+    # add_url = '/tryitout/H0STCNI0'
+    tr_id = 'H0STCNI0'
+    transaction = kis_api(tr_id)
 
     async with websockets.connect(transaction.url) as ws:           # 체결 웹소켓 생성
         print("KIS 웹소켓에 연결됨")
@@ -42,7 +43,7 @@ async def kis_transaction():
 
         while True:
             try:
-                time.sleep(0.5)
+                # time.sleep(0.5)
                 data = await ws.recv()
                 print('체결구독 수신 데이터: ', data)
                 data = await transaction.make_data(data)
@@ -61,8 +62,8 @@ async def kis_transaction():
 
 
 async def kis_price():
-    add_url = '/tryitout/H0STCNT0'
-    price = kis_api(add_url, code_list)
+    tr_id = 'H0STCNT0'
+    price = kis_api(tr_id, code_list)
 
     async with websockets.connect(price.url) as ws:                 # 현재가 웹소켓 생성
         print("KIS 웹소켓에 연결됨")
@@ -70,7 +71,7 @@ async def kis_price():
 
         while True:
             try:
-                time.sleep(0.5)
+                # time.sleep(0.5)
                 data = await ws.recv()
                 print('현재가 구독 수신 데이터: ', data)
                 data = await price.make_data(data)

@@ -7,27 +7,23 @@ from base64 import b64decode
 
 menulist = "고객ID|계좌번호|주문번호|원주문번호|매도매수구분|정정구분|주문종류|주문조건|주식단축종목코드|체결수량|체결단가|주식체결시간|거부여부|체결여부|접수여부|지점번호|주문수량|계좌명|호가조건가격|주문거래소구분|실시간체결창표시여부|필러|신용구분|신용대출일자|체결종목명40|주문가격"
 class kis_api:
-    def __init__(self, add_url, code_list=None):
+    def __init__(self, tr_id, code_list=None):
         self.__approval_key = get_approval_key()
         self.__HTS_ID = settings.KIS_HTS_ID
-        self.__add_url = add_url
+        # self.__add_url = add_url
         self.__code_list = code_list
 
         if settings.KIS_USE_MOCK == True:  # 모의
-            base_url = "ws://ops.koreainvestment.com:31000"
+            url = "ws://ops.koreainvestment.com:31000"
         elif settings.KIS_USE_MOCK == False:
-            base_url = "ws://ops.koreainvestment.com:21000"  # 실전
-        self.url = base_url + add_url
+            url = "ws://ops.koreainvestment.com:21000"  # 실전
+        self.url = url
+        self.__tr_id = tr_id
 
-        if add_url == '/tryitout/H0STCNT0':    # 실시간 체결가
+        if tr_id == 'H0STCNT0':    # 실시간 체결가
             self.__tr_key = self.__code_list
-            self.__tr_id = 'H0STCNT0'
-        elif add_url == '/tryitout/H0STCNI0':  # 실시간 체결통보
+        elif (tr_id == 'H0STCNI0') or (tr_id == 'H0STCNI9'):  # 실시간 체결통보
             self.__tr_key = self.__HTS_ID
-            if settings.KIS_USE_MOCK == True:   # 모의계좌
-                self.__tr_id = 'H0STCNI9'
-            elif settings.KIS_USE_MOCK == False: # 실전계좌
-                self.__tr_id = 'H0STCNI0'
 
 
     async def subscribe_transaction(self, ws):
@@ -60,7 +56,7 @@ class kis_api:
 
 
     async def make_data(self, data):
-        if self.__add_url == '/tryitout/H0STCNI0':    # 체결통보
+        if (self.__tr_id == 'H0STCNI0') or (self.__tr_id == 'H0STCNI9'):    # 체결통보
             try:
                 data = json.loads(data)
                 if 'body' in data and 'output' in data['body']:
@@ -76,7 +72,7 @@ class kis_api:
                 print('해독데이터: ', data)
             return data
 
-        elif self.__add_url == '/tryitout/H0STCNT0': # 실시간 체결가
+        elif self.__tr_id == 'H0STCNT0': # 실시간 체결가
             try:
                 data = json.loads(data)
             except:
