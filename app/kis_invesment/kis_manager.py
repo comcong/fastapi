@@ -12,9 +12,9 @@ class kis_api:
         self.__HTS_ID = settings.KIS_HTS_ID
 
         if settings.KIS_USE_MOCK == True:  # 모의
-            self.url = "ws://ops.koreainvestment.com:31000"  # 모의계좌
+            self.url = "ws://ops.koreainvestment.com:31000"  # ws 모의계좌
         elif settings.KIS_USE_MOCK == False:
-            self.url = "ws://ops.koreainvestment.com:21000"  # 실전계좌
+            self.url = "ws://ops.koreainvestment.com:21000"  # ws 실전계좌
 
 
     async def subscribe(self, ws, tr_id, tr_type='1', code_list=None):
@@ -23,19 +23,19 @@ class kis_api:
         print('====================================')
 
 
-        if tr_id in ['H0STCNI0', 'H0STCNI9']:
-            senddata = self.__req_data(tr_id=tr_id, tr_key=self.__HTS_ID, tr_type=tr_type)
-            await ws.send(json.dumps(senddata))     # 체결알람 구독 등록 데이터 전송
+        if tr_id in ['H0STCNI0', 'H0STCNI9']:                                               # 실시간 체결알람 tr_id
+            senddata = self.__req_data(tr_id=tr_id, tr_key=self.__HTS_ID, tr_type=tr_type)  # ws 에 전송할 데이터 포맷
+            await ws.send(json.dumps(senddata))                                             # 체결알람 구독 등록 데이터 전송
             print('실시간 체결알람 등록 데이터 전송', senddata)
 
-        if tr_id == 'H0STCNT0':
-            for tr_key in code_list:
+        if tr_id == 'H0STCNT0':                                                              # 실시간 현재가 tr_id
+            for tr_key in code_list:                                                         # 종목코드 순차적으로 ws 에 데이터 전송
                 senddata = self.__req_data(tr_id=tr_id, tr_key=tr_key, tr_type=tr_type)
                 await ws.send(json.dumps(senddata))
                 print('실시간 현재가 등록 데이터 전송', senddata)
 
 
-    async def make_data(self, tr_id, data):
+    async def make_data(self, tr_id, data):                                         # ws 에서 수신되는 데이터 가공
         if (tr_id == 'H0STCNI0') or (tr_id == 'H0STCNI9'):    # 체결통보
             try:
                 data = json.loads(data)
@@ -63,7 +63,7 @@ class kis_api:
             data = json.loads(data)
             return data
 
-    def __req_data(self, tr_id  ,tr_key, tr_type): # 구독 신청/해제
+    def __req_data(self, tr_id  ,tr_key, tr_type):                    # ws에 전송할 데이터 포맷
 
         # 요청 데이터 구성
         senddata = {

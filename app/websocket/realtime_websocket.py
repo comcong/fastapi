@@ -32,33 +32,32 @@ async def endpoint(fws: fws):
 
 async def combined_kis_task():
     tr_id_price = 'H0STCNT0'       # 실시간 현재가 tr_id
-    tr_id_transaction = 'H0STCNI9' # 실시간 체결알람 tr_id
+    tr_id_transaction = 'H0STCNI9' # 실시간 체결알람 모의계좌용 tr_id      실전계좌: 'H0STCNI0'
 
     kis = kis_api()  # kis 객체 생성
 
-    async with websockets.connect(kis.url) as ws:  # kis 웹소켓에 연결
+    async with websockets.connect(kis.url) as ws:  # kis 웹소켓 생성; 최초 한개만 생성해야 한다. 여러개 생성되면 치명적 에러 발생
         print("KIS 웹소켓에 연결됨")
 
-        # ws 객체에 순차적으로 구독 요청
+        # ws 객체에 순차적으로 구독 요청; 단 1개의 웹소켓으로 여러가지 구독 등록한다.; 이것이 핵심!!!
         await kis.subscribe(ws=ws, tr_id=tr_id_transaction)                   # 실시간 체결알람 구독 등록
         await kis.subscribe(ws=ws, tr_id=tr_id_price, code_list=code_list)    # 실시간 현재가 구독 등록
 
         while True:
             try:
-                raw_data = await ws.recv()
+                raw_data = await ws.recv()                  # ws로부터 데이터 수신
                 print("수신된 원본 데이터: ", raw_data)
                 data = json.loads(raw_data)
                 tr_id = data['header']['tr_id']
 
-                # 먼저 현재가 데이터 시도
-                data = await kis.make_data(tr_id=tr_id, data=raw_data)
+                data = await kis.make_data(tr_id=tr_id, data=raw_data)  # 데이터 가공
                 print("수신된 가공 데이터: ", data)
-                for client in connected_clients.copy():   # 각 클라이언트들에게 데이터 전송
+                for client in connected_clients.copy():   # 리스트 값을 변경할 때는 copy해야 에러 방지된다.
                     try:
-                        await client.send_text(json.dumps(data, ensure_ascii=False))
+                        await client.send_text(json.dumps(data, ensure_ascii=False))  # 각 클라이언트들에게 데이터 전송
                     except Exception as e:
                         print("클라이언트 전송 실패:", e)
-                        connected_clients.remove(client)
+                        connected_clients.remove(client)   # fws 에 데이터 전송 실패시 리스트 요소 제거; 리스트 요소 변경
 
             except Exception as e:
                 print("웹소켓 수신 오류:", e)
