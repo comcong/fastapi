@@ -58,20 +58,28 @@ class kis_api:
 
 
     async def make_data(self, data):
-        try:
-            data = json.loads(data)
-            if 'body' in data and 'output' in data['body']:
-                iv = data['body']['output']['iv']
-                key = data['body']['output']['key']
-            else:
-                pass
+        if self.__add_url == '/tryitout/H0STCNI0':    # 체결통보
+            try:
+                data = json.loads(data)
+                if 'body' in data and 'output' in data['body']:
+                    iv = data['body']['output']['iv']
+                    key = data['body']['output']['key']
+                else:
+                    pass
 
-        except :
-            cipher_text = data.split('|')[3]
-            print('암호데이터: ', cipher_text)
-            data = self.__aes_cbc_base64_dec(key, iv, cipher_text)
-            print('해독데이터: ', data)
-        return data
+            except :
+                cipher_text = data.split('|')[3]
+                print('암호데이터: ', cipher_text)
+                data = self.__aes_cbc_base64_dec(key, iv, cipher_text)
+                print('해독데이터: ', data)
+            return data
+
+        elif self.__add_url == '/tryitout/H0STCNT0': # 실시간 체결가
+            try:
+                data = json.loads(data)
+            except:
+                data = self.__price_data_cleaning(data)
+            return data
 
     def __req_data(self, tr_type): # 구독 신청/해제
 
@@ -97,12 +105,20 @@ class kis_api:
         cipher = AES.new(key.encode('utf-8'), AES.MODE_CBC, iv.encode('utf-8'))
         # data = bytes.decode(unpad(cipher.decrypt(b64decode(cipher_text)), AES.block_size))
         data = unpad(cipher.decrypt(b64decode(cipher_text)), AES.block_size).decode('utf-8')
-        return self.__stockspurchase(data)
+        return self.__transaction_data_cleaning(data)
 
-    # 체결 통보 출력라이브러리
-    def __stockspurchase(self, data):  # 체결통보 데이터 정제
+    # 체결통보 출력라이브러리
+    def __transaction_data_cleaning(self, data):  # 체결통보 데이터 정제
         # data = 'sanare78^5014279001^0000005008^^02^0^00^0^069500^0000000001^000043295^144700^0^2^2^00950^000000001^신명진^1Y^10^^KODEX200^000044000'
         data_keys = menulist.split('|')
         data_values = data.split('^')
         result = dict(zip(data_keys, data_values))   # zip으로 묶어서 딕셔너리 생성
+        return result
+
+    # 현재가 출력라이브러리
+    def __price_data_cleaning(self, data):  # 주식 현재가 데이터 정제
+        # data = '0|H0STCNT0|001|005930^120651^67050^5^-750^-1.11^67620.79^68100^68500^67000^67100^67000^200^8293601^560819903500^25773^26194^421^67.01^4648298^3114657^1^0.38^46.80^090008^5^-1050^090433^5^-1450^100933^2^50^20250722^20^N^122087^257541^794914^1365374^0.14^10573794^78.44^0^^68100'
+        data_keys = menulist.split('|')
+        data_values = data.split('|')[3].split('^')
+        result = dict(zip(data_keys, data_values))  # zip으로 묶어서 딕셔너리 생성
         return result

@@ -1,6 +1,6 @@
 import json
 import websockets
-from fastapi import WebSocket, WebSocketDisconnect
+from fastapi import WebSocket as fws   #, WebSocketDisconnect
 from app.kis_invesment.socket_current_price import get_stock_price
 from app.kis_invesment.kis_manager import kis_api
 import asyncio
@@ -10,11 +10,11 @@ kis_task = None             # kis_receiver가 실행 중인지 추적
 code_list:list[str] = ['015760', '052690', '005380', '000270', '027360' ]
 
 # 실시간 체결알람 엔드포인트
-async def endpoint(websocket: WebSocket):
+async def endpoint(fws: fws):
     global kis_task
 
-    await websocket.accept()
-    connected_clients.add(websocket)  # 새로운 클라이언트 추가
+    await fws.accept()          # fastapi 웹소켓 연결 허용
+    connected_clients.add(fws)  # 새로운 클라이언트 추가
     print("새로운 클라이언트 추가")
 
     # 최초 클라이언트일 경우 kis_receiver 실행
@@ -23,11 +23,11 @@ async def endpoint(websocket: WebSocket):
 
     try:
         while True:
-            await websocket.receive_text()  # 클라이언트 대기
+            await fws.receive_text()  # 클라이언트 대기
     except Exception as e:
         print("클라이언트 오류:", e)
     finally:
-        connected_clients.remove(websocket)
+        connected_clients.remove(fws)
         print("클라이언트 제거됨")
 
 
