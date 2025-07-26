@@ -34,8 +34,68 @@ class kis_api:
                 await ws.send(json.dumps(senddata))
                 print('실시간 현재가 등록 데이터 전송', senddata)
 
+    def __req_data(self, tr_id  ,tr_key, tr_type):                    # ws에 전송할 데이터 포맷
 
-    async def make_data(self, tr_id, data):                                         # ws 에서 수신되는 데이터 가공
+        # 요청 데이터 구성
+        senddata = {
+            "header": {
+                "approval_key": self.__approval_key,
+                "custtype": "P",
+                "tr_type": tr_type,
+                "content-type": "utf-8"
+            },
+            "body": {
+                "input": {
+                    "tr_id": tr_id,
+                    "tr_key": tr_key
+                }
+            }
+        }
+        return senddata
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    async def make_data(self, data):
+        try:
+            data = json.loads(data)
+            tr_id = data['tr_id']
+            msg = data["body"]["msg1"]
+            msg_cd = data["body"]["msg_cd"]
+            aes_iv = data["body"]["output"]["iv"]
+            aes_key = data["body"]["output"]["key"]
+        except:
+            data = data.split('^')
+            header = data[0]
+            body = data[1]
+            Encrypted = header.split('|')[0]
+            tr_id = header.split('|')[1]
+            len_data = header.split('|')[2]
+
+        # ws 에서 수신되는 데이터 가공
         if (tr_id == 'H0STCNI0') or (tr_id == 'H0STCNI9'):    # 체결통보
             try:
                 data = json.loads(data)
@@ -63,24 +123,7 @@ class kis_api:
             data = json.loads(data)
             return data
 
-    def __req_data(self, tr_id  ,tr_key, tr_type):                    # ws에 전송할 데이터 포맷
 
-        # 요청 데이터 구성
-        senddata = {
-            "header": {
-                "approval_key": self.__approval_key,
-                "custtype": "P",
-                "tr_type": tr_type,
-                "content-type": "utf-8"
-            },
-            "body": {
-                "input": {
-                    "tr_id": tr_id,
-                    "tr_key": tr_key
-                }
-            }
-        }
-        return senddata
 
     # AES256 DECODE
     def __aes_cbc_base64_dec(self, key, iv, cipher_text):
@@ -104,3 +147,4 @@ class kis_api:
         data_values = data.split('|')[3].split('^')
         result = dict(zip(data_keys, data_values))  # zip으로 묶어서 딕셔너리 생성
         return result
+

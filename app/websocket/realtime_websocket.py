@@ -47,11 +47,14 @@ async def combined_kis_task():
             try:
                 raw_data = await ws.recv()                  # ws로부터 데이터 수신
                 print("수신된 원본 데이터: ", raw_data)
-                data = json.loads(raw_data)
-                tr_id = data['header']['tr_id']
-
-                data = await kis.make_data(tr_id=tr_id, data=raw_data)  # 데이터 가공
+                # try:
+                #     data = json.loads(raw_data)         # 문자열을 딕셔너리로 변환
+                #     tr_id = data['header']['tr_id']     # tr_id 값 추출
+                # except:                                 # 문자열이 딕셔너리 형태가 아니면 패스
+                #     pass
+                data = await kis.make_data(raw_data)  # 데이터 가공
                 print("수신된 가공 데이터: ", data)
+
                 for client in connected_clients.copy():   # 리스트 값을 변경할 때는 copy해야 에러 방지된다.
                     try:
                         await client.send_text(json.dumps(data, ensure_ascii=False))  # 각 클라이언트들에게 데이터 전송
