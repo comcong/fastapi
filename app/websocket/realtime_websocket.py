@@ -52,7 +52,7 @@ async def combined_kis_task():
                 #     tr_id = data['header']['tr_id']     # tr_id 값 추출
                 # except:                                 # 문자열이 딕셔너리 형태가 아니면 패스
                 #     pass
-                data = await kis.make_data(raw_data)  # 데이터 가공
+                data = await kis.make_data(raw_data)         # 데이터 가공
                 print("수신된 가공 데이터: ", data)
 
                 for client in connected_clients.copy():   # 리스트 값을 변경할 때는 copy해야 에러 방지된다.

@@ -1,52 +1,48 @@
-async def make_data(self, data):  # ws 에서 수신되는 데이터 가공
-    if (tr_id == 'H0STCNI0') or (tr_id == 'H0STCNI9'):  # 체결통보
-        try:
-            data = json.loads(data)
-            if 'body' in data and 'output' in data['body']:
-                iv = data['body']['output']['iv']
-                key = data['body']['output']['key']
-            else:
-                pass
 
-        except:
-            cipher_text = data.split('|')[3]
-            print('암호데이터: ', cipher_text)
-            data = self.__aes_cbc_base64_dec(key, iv, cipher_text)
-            print('해독데이터: ', data)
-        return data
-
-    elif tr_id == 'H0STCNT0':  # 실시간 체결가
-        try:
-            data = json.loads(data)
-        except:
-            data = self.__price_data_cleaning(data)
-        return data
-
-    elif tr_id == 'PINGPONG':
-        data = json.loads(data)
-        return data
-
-
-
-# 구독 성공 메시지
+"""체결 통보 원시데이터"""
 '''
 {
-  "header": {
-    "tr_id": "H0STCNT0",
-    "tr_key": "005930",
-    "encrypt": "N"
-  },
-  "body": {
-    "rt_cd": "0",
-    "msg_cd": "OPSP0000",
-    "msg1": "SUBSCRIBE SUCCESS",
-    "output": {
-      "iv": "e2e0531bfa1122c6",
-      "key": "b3cbf02d19f564a0d2cbe5b1edcd5b6d"
-    }
-  }
-}
+"header":{
+    "tr_id":"H0STCNI9",
+    "tr_key":"sanare78",
+    "encrypt":"N"
+    },
+
+"body":{
+    "rt_cd":"0",  # 0: 정상
+    "msg_cd":"OPSP0000",
+    "msg1":"SUBSCRIBE SUCCESS",
+    "output":{
+        "iv":"ae7171b76218feb2",
+        "key":"yylxnzaututeohlkpjdrpvmmfpghvout"}}}
 '''
+
+# 현재가 원시 데이터
+'''
+{
+"header":{
+    "tr_id":"H0STCNT0",
+    "tr_key":"015760",
+    "encrypt":"N"},
+
+"body":{
+    "rt_cd":"0",    # 0: 정상
+    "msg_cd":"OPSP0000",
+    "msg1":"SUBSCRIBE SUCCESS",
+    "output":{
+        "iv":"d23df9ae38430033",
+        "key":"qfrcsnmpmvvagcyoonivdmgcoyqkjfhb"}}}'''
+
+# 핑퐁 데이터
+'''
+{"header":{
+"tr_id":"PINGPONG",
+"datetime":"20250726115433"}}
+'''
+
+
+
+
 
 '''
 1. 정상 등록 여부 (JSON)
@@ -57,6 +53,8 @@ async def make_data(self, data):  # ws 에서 수신되는 데이터 가공
 
 
 '0|H0STCNT0|001|005930^120651^67050^5^-750^-1.11^67620.79^68100^68500^67000^67100^67000^200^8293601^560819903500^25773^26194^421^67.01^4648298^3114657^1^0.38^46.80^090008^5^-1050^090433^5^-1450^100933^2^50^20250722^20^N^122087^257541^794914^1365374^0.14^10573794^78.44^0^^68100'
+
+
 # 암호화 유무 : 0:암호화 되지 않은 데이터,  1:암호화된 데이터
 # TR_ID : 등록한 tr_id (ex. H0STCNT0)
 # 데이터 건수 : (ex. 001 인 경우 데이터 건수 1건, 004인 경우 데이터 건수 4건)

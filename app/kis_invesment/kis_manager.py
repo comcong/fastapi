@@ -5,11 +5,14 @@ from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
 from base64 import b64decode
 
-menulist = "고객ID|계좌번호|주문번호|원주문번호|매도매수구분|정정구분|주문종류|주문조건|주식단축종목코드|체결수량|체결단가|주식체결시간|거부여부|체결여부|접수여부|지점번호|주문수량|계좌명|호가조건가격|주문거래소구분|실시간체결창표시여부|필러|신용구분|신용대출일자|체결종목명40|주문가격"
+price_menulist = '유가증권단축종목코드|주식체결시간|주식현재가|전일대비부호|전일대비|전일대비율|가중평균주식가격|주식시가|주식최고가|주식최저가|매도호가1|매수호가1|체결거래량|누적거래량|누적거래대금|매도체결건수|매수체결건수|순매수체결건수|체결강도|총매도수량|총매수수량|체결구분|매수비율|전일거래량대비등락율|시가시간|시가대비구분|시가대비|최고가시간|고가대비구분|고가대비|최저가시간|저가대비구분|저가대비|영업일자|신장운영구분코드|거래정지여부|매도호가잔량|매수호가잔량|총매도호가잔량|총매수호가잔량|거래량회전율|전일동시간누적거래량|전일동시간누적거래량비율|시간구분코드|임의종료구분코드|정적VI발동기준가'
+trans_menulist = '고객ID|계좌번호|주문번호|원주문번호|매도매수구분|정정구분|주문종류|주문조건|주식단축종목코드|체결수량|체결단가|주식체결시간|거부여부|체결여부|접수여부|지점번호|주문수량|계좌명|호가조건가격|주문거래소구분|실시간체결창표시여부|필러|신용구분|신용대출일자|체결종목명40|주문가격'
 class kis_api:
     def __init__(self):
         self.__approval_key = get_approval_key()
         self.__HTS_ID = settings.KIS_HTS_ID
+        self.__iv = None
+        self.__key = None
 
         if settings.KIS_USE_MOCK == True:  # 모의
             self.url = "ws://ops.koreainvestment.com:31000"  # ws 모의계좌
@@ -53,98 +56,54 @@ class kis_api:
         }
         return senddata
 
+    async def make_data(self, row_data):
+        try:                                             # 문자열이 딕셔너리로 전환이 안 되는 경우
+            listed_data = row_data.split('|')
+            encrypted = listed_data[0]
+            tr_id = listed_data[1]
+            len_data =listed_data[2]
+            data = listed_data[3]
+            if encrypted == '1':     # 암호화된 데이터인 경우
+                data = self.__aes_cbc_base64_dec(data)  # 데이터 복호화
 
+            # 데이터를 딕셔너리 형태로 포장
+            extracted_data = {
+                'tr_id': tr_id,
+                'len_data': len_data,
+                'data': data
+            }
 
+            if (extracted_data['tr_id'] == 'H0STCNI0') or (extracted_data['tr_id'] == 'H0STCNI9'):  # 실시간 체결통보
+                data_keys = trans_menulist.split('|')
+                data_values = data.split('^')
+                result = dict(zip(data_keys, data_values))  # zip으로 묶어서 딕셔너리 형태로 변환
+                return result
+            elif extracted_data['tr_id'] == 'H0STCNT0':                                             # 실시간 현재가
+                data_keys = price_menulist.split('|')
+                data_values = data.split('^')
+                result = dict(zip(data_keys, data_values))  # zip으로 묶어서 딕셔너리 형태로 변환
+                return result
 
+        except:                                                   # 딕셔너리 형태의 문자열인 경우
+            data = json.loads(row_data)
+            tr_id = data['header']['tr_id']
+            if tr_id != 'PINGPONG':                               # PINGPONG 데이터가 아닌 경우
+                rt_cd = data['body']['rt_cd']
 
+                if rt_cd == '0':                                  # 정상 데이터인 경우
+                    self.__iv = data["body"]["output"]["iv"]      # iv 값 할당
+                    self.__key = data["body"]["output"]["key"]    # key 값 할당
+                    msg = data["body"]["msg1"]
+                    msg_cd = data["body"]["msg_cd"]
+                else:                                             # 정상 데이터가 아닌 경우
+                    return data                                   # 비정상 데이터 그대로 리턴
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    async def make_data(self, data):
-        try:
-            data = json.loads(data)
-            tr_id = data['tr_id']
-            msg = data["body"]["msg1"]
-            msg_cd = data["body"]["msg_cd"]
-            aes_iv = data["body"]["output"]["iv"]
-            aes_key = data["body"]["output"]["key"]
-        except:
-            data = data.split('^')
-            header = data[0]
-            body = data[1]
-            Encrypted = header.split('|')[0]
-            tr_id = header.split('|')[1]
-            len_data = header.split('|')[2]
-
-        # ws 에서 수신되는 데이터 가공
-        if (tr_id == 'H0STCNI0') or (tr_id == 'H0STCNI9'):    # 체결통보
-            try:
-                data = json.loads(data)
-                if 'body' in data and 'output' in data['body']:
-                    iv = data['body']['output']['iv']
-                    key = data['body']['output']['key']
-                else:
-                    pass
-
-            except :
-                cipher_text = data.split('|')[3]
-                print('암호데이터: ', cipher_text)
-                data = self.__aes_cbc_base64_dec(key, iv, cipher_text)
-                print('해독데이터: ', data)
-            return data
-
-        elif tr_id == 'H0STCNT0': # 실시간 체결가
-            try:
-                data = json.loads(data)
-            except:
-                data = self.__price_data_cleaning(data)
-            return data
-
-        elif tr_id == 'PINGPONG':
-            data = json.loads(data)
-            return data
-
-
+            else:                                                 # PINGPONG 데이터인 경우
+                return data                                       # PINGPONG 데이터 그대로 리턴
 
     # AES256 DECODE
-    def __aes_cbc_base64_dec(self, key, iv, cipher_text):
-        cipher = AES.new(key.encode('utf-8'), AES.MODE_CBC, iv.encode('utf-8'))
+    def __aes_cbc_base64_dec(self, cipher_text):
+        cipher = AES.new(self.__key.encode('utf-8'), AES.MODE_CBC, self.__iv.encode('utf-8'))
         # data = bytes.decode(unpad(cipher.decrypt(b64decode(cipher_text)), AES.block_size))
         data = unpad(cipher.decrypt(b64decode(cipher_text)), AES.block_size).decode('utf-8')
-        return self.__transaction_data_cleaning(data)
-
-    # 체결통보 출력라이브러리
-    def __transaction_data_cleaning(self, data):  # 체결통보 데이터 정제
-        # data = 'sanare78^5014279001^0000005008^^02^0^00^0^069500^0000000001^000043295^144700^0^2^2^00950^000000001^신명진^1Y^10^^KODEX200^000044000'
-        data_keys = menulist.split('|')
-        data_values = data.split('^')
-        result = dict(zip(data_keys, data_values))   # zip으로 묶어서 딕셔너리 생성
-        return result
-
-    # 현재가 출력라이브러리
-    def __price_data_cleaning(self, data):  # 주식 현재가 데이터 정제
-        # data = '0|H0STCNT0|001|005930^120651^67050^5^-750^-1.11^67620.79^68100^68500^67000^67100^67000^200^8293601^560819903500^25773^26194^421^67.01^4648298^3114657^1^0.38^46.80^090008^5^-1050^090433^5^-1450^100933^2^50^20250722^20^N^122087^257541^794914^1365374^0.14^10573794^78.44^0^^68100'
-        data_keys = menulist.split('|')
-        data_values = data.split('|')[3].split('^')
-        result = dict(zip(data_keys, data_values))  # zip으로 묶어서 딕셔너리 생성
-        return result
-
+        return data
