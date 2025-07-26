@@ -4,7 +4,7 @@ import time
 from datetime import datetime, timedelta
 import pytz
 from app.core.config import settings
-from app.db.supabase import supabase
+from app.db.kis_db import supabase
 from threading import Lock
 from enum import Enum
 

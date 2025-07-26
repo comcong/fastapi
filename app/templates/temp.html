@@ -95,13 +95,10 @@
                 const msg = parsed.data;
                 const div = document.createElement("div");
                 div.className = "message-line";
-
-                // 객체면 JSON 문자열로, 아니면 그대로 출력
-                div.textContent = typeof msg === 'object' ? JSON.stringify(msg, null, 2) : msg;
+                div.textContent = msg;
 
                 // 메시지 박스에 추가
-                messageBox.innerHTML = ""; // 기존 메시지 지우기
-                messageBox.appendChild(div); // 새 메시지 추가
+                messageBox.appendChild(div);
                 messageBox.scrollTop = messageBox.scrollHeight; // 자동 스크롤
             }
         };

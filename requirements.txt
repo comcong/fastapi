@@ -1,6 +1,6 @@
 uvicorn
 fastapi
-# pandas
+pandas
 requests
 supabase
 pydantic_settings
