@@ -4,10 +4,18 @@ from fastapi import WebSocket as fws
 from app.kis_invesment.kis_manager import kis_api
 import asyncio
 import pandas as pd
+from app.db import kis_db
 
 connected_clients = set()  # 접속한 클라이언트들의 리스트
 task = None                # combined_kis_task() 중복 실행을 방지하기 위한 변수
-code_list = ['015760', '052690', '005380', '000270', '027360']
+def get_code_list_from_db() -> list[str]:
+    data = kis_db.get_data()
+    df = pd.DataFrame(data)
+    df = df[df['체결수량'].astype(int) > 0]
+    code_list = df['종목코드'].unique().tolist()
+    return code_list
+
+code_list = set(get_code_list_from_db())
 
 # 모든 클라이언트들 에게 메시지 전송하는 함수
 async def broadcast(message: str):
