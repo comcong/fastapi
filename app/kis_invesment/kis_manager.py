@@ -7,8 +7,6 @@ from base64 import b64decode
 from app.db import kis_db
 import pandas as pd
 
-
-
 class kis_api:
     def __init__(self):
         self.__approval_key = get_approval_key()
@@ -24,6 +22,160 @@ class kis_api:
         elif settings.KIS_USE_MOCK == False:
             self.url = "ws://ops.koreainvestment.com:21000"  # ws 실전계좌
 
+    # ============================================================= #
+    # ================== 데이터 가공하는 부분 ======================== #
+    # ============================================================= #
+
+    async def make_data(self, row_data):
+        try:                                             # 문자열이 '|' 로 구분된 문자열인 경우
+            listed_data = row_data.split('|')
+            encrypted = listed_data[0]
+            tr_id = listed_data[1]
+            len_data =listed_data[2]
+            data = listed_data[3]
+            if encrypted == '1':        # 암호화된 데이터인 경우
+                data = self.__aes_cbc_base64_dec(data)  # 데이터 복호화
+
+            # 데이터를 딕셔너리 형태로 포장
+            extracted_data = {
+                'tr_id': tr_id,
+                'len_data': len_data,
+                'data': data
+            }
+
+            if (extracted_data['tr_id'] == 'H0STCNI0') or (extracted_data['tr_id'] == 'H0STCNI9'):  # 실시간 체결통보
+                data_keys = self.__trans_menulist.split('|')
+                data_values = data.split('^')
+                data = dict(zip(data_keys, data_values))  # zip으로 묶어서 딕셔너리 형태로 변환
+                data['tr_id'] = extracted_data['tr_id']   # data 에 tr_id 값 추가; 데이터 종류 구분하기 위해
+
+                # ======== 매수 체결시  df, DB 에 데이터 넣는 자리 ==============
+                if data['매도매수구분'] == '02':  # 01: 매도, 02: 매수     ==== 매수
+                    self.buy_update(data)  # df, DB 데이터 업데이트  === 매수한 만큼 삽입
+
+                # ======== 매도 체결시  df, DB 에 데이터 빼는 자리 ==============
+                elif data['매도매수구분'] == '01':  # 01: 매도, 02: 매수  ==== 매도
+                    self.sell_update(data)
+                    # self.__df = self.__df.loc[self.__df['주문번호'] != data['주문번호']]  # 매도한 만큼 삭제
+                    # kis_db.delete_data(data['주문번호'])   # 매도한 주문번호 행 supabase DB 에서 삭제
+                print(self.__df)
+                return data  # 완성된 체결통보 데이터 df 로 리턴
+
+
+            elif extracted_data['tr_id'] == 'H0STCNT0':    # 실시간 현재가
+                data_keys = self.__price_menulist.split('|')
+                data_values = data.split('^')
+                data = dict(zip(data_keys, data_values))  # zip으로 묶어서 딕셔너리 형태로 변환
+                data['tr_id'] = extracted_data['tr_id']   # data 에 tr_id 값 추가; 데이터 종류 구분하기 위해
+                df = pd.DataFrame(data)
+                return df   # 완성된 현재가 데이터 df 로 리턴
+
+        except:                                                   # 딕셔너리 형태의 문자열인 경우
+            data = json.loads(row_data)
+            tr_id = data['header']['tr_id']
+            if tr_id != 'PINGPONG':                               # PINGPONG 데이터가 아닌 경우
+                rt_cd = data['body']['rt_cd']
+
+                if rt_cd == '0':                                  # 정상 데이터인 경우
+                    self.__iv = data["body"]["output"]["iv"]      # iv 값 할당
+                    self.__key = data["body"]["output"]["key"]    # key 값 할당
+                    msg = data["body"]["msg1"]
+                    msg_cd = data["body"]["msg_cd"]
+                    return data  # 정상 데이터 리턴
+                else:
+                    return data  # 비정상 데이터 리턴
+
+            else:
+                return data   # PINGPONG 데이터 그대로 리턴
+
+
+
+    def buy_update(self, data):
+        주문번호 = data['주문번호']
+
+        # 주문번호가 이미 존재하는지 확인
+        if 주문번호 in self.__df['주문번호'].values:
+            # 기존 행 가져오기
+            idx = self.__df[self.__df['주문번호'] == 주문번호].index[0] # 기존 주문번호가 있는 행번호 가져오기
+
+            # 수량 누적 (int로 변환 주의)
+            기존_수량 = int(self.__df.at[idx, '체결수량'])
+            신규_수량 = int(data['체결수량'])
+            self.__df.at[idx, '체결수량'] = str(기존_수량 + 신규_수량)
+
+            # 체결단가는 최신값으로 갱신
+            self.__df.at[idx, '체결단가'] = data['체결단가']
+            self.__df.at[idx, '체결시간'] = data['체결시간']
+
+            # DB 업데이트도 필요하다면 별도 update 함수 사용
+            kis_db.update_data(주문번호, {
+                '체결수량': str(기존_수량 + 신규_수량),
+                '체결단가': data['체결단가'],
+                '체결시간': data['체결시간']
+            })
+
+        else:  # 새로운 주문번호라면, 새로운 행에 추가
+            self.__df = pd.concat([self.__df, pd.DataFrame([data])], ignore_index=True)
+            kis_db.insert_data(data)
+
+
+    def sell_update(self, data):
+        주문번호 = data['주문번호']
+
+        # 주문번호가 이미 존재하는지 확인
+        if 주문번호 in self.__df['주문번호'].values:
+
+            idx = self.__df[self.__df['주문번호'] == 주문번호].index[0] # 기존 주문번호가 있는 행번호 가져오기
+
+            # 수량 차감 (int로 변환 주의)
+            기존_수량 = int(self.__df.at[idx, '체결수량'])
+            매도_수량 = int(data['체결수량'])
+            새로운_수량 = max(0, 기존_수량 - 매도_수량)  # 음수 방지
+
+            self.__df.at[idx, '체결수량'] = str(새로운_수량)
+            self.__df.at[idx, '체결단가'] = data['체결단가']
+            self.__df.at[idx, '체결시간'] = data['체결시간']
+
+            if 새로운_수량 == 0:         # 수량이 모두 없어지면 행 제거
+                self.__df.drop(index=idx, inplace=True)
+                kis_db.delete_data(주문번호)
+
+            else:
+                # 수량이 0이 아닐 때만 DB 업데이트
+                kis_db.update_data(주문번호, {
+                    '체결수량': str(새로운_수량),
+                    '체결단가': data['체결단가'],
+                    '체결시간': data['체결시간']
+                })
+
+        else:
+            print(f"주문번호 {주문번호} 가 없는 매도가 체결되었습니다. 체결 데이터 확인 필요!!")
+
+
+
+    # AES256 DECODE
+    def __aes_cbc_base64_dec(self, cipher_text):
+        cipher = AES.new(self.__key.encode('utf-8'), AES.MODE_CBC, self.__iv.encode('utf-8'))
+        # data = bytes.decode(unpad(cipher.decrypt(b64decode(cipher_text)), AES.block_size))
+        data = unpad(cipher.decrypt(b64decode(cipher_text)), AES.block_size).decode('utf-8')
+        return data
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    # ============================================================= #
+    # ================== 구독 등록하는 부분 ========================== #
+    # ============================================================= #
 
     async def subscribe(self, ws, tr_id, tr_type='1', code_list=None):
         print('====================================')
@@ -60,68 +212,3 @@ class kis_api:
             }
         }
         return senddata
-
-    async def make_data(self, row_data):
-        try:                                             # 문자열이 '|' 로 구분된 문자열인 경우
-            listed_data = row_data.split('|')
-            encrypted = listed_data[0]
-            tr_id = listed_data[1]
-            len_data =listed_data[2]
-            data = listed_data[3]
-            if encrypted == '1':        # 암호화된 데이터인 경우
-                data = self.__aes_cbc_base64_dec(data)  # 데이터 복호화
-
-            # 데이터를 딕셔너리 형태로 포장
-            extracted_data = {
-                'tr_id': tr_id,
-                'len_data': len_data,
-                'data': data
-            }
-
-            if (extracted_data['tr_id'] == 'H0STCNI0') or (extracted_data['tr_id'] == 'H0STCNI9'):  # 실시간 체결통보
-                data_keys = self.__trans_menulist.split('|')
-                data_values = data.split('^')
-                data = dict(zip(data_keys, data_values))  # zip으로 묶어서 딕셔너리 형태로 변환
-                data['tr_id'] = extracted_data['tr_id']   # data 에 tr_id 값 추가; 데이터 종류 구분하기 위해
-                if data['매도매수구분'] == '02':  # 01: 매도, 02: 매수
-                    self.__df = pd.concat([self.__df, data], ignore_index=True)    # 체결알람 데이터 데이터프레임에 한 행 추가
-                    kis_db.insert_data(data)                                           # 체결알람 데이터 supabase DB에 한 행 추가
-                elif data['매도매수구분'] == '01':  # 01: 매도, 02: 매수
-                    self.__df = self.__df.loc[self.__df['주문번호'] != data['주문번호']]  # 매도한 주문번호 행 데이터 데이터프레임 에서 삭제
-                    kis_db.delete_data(data['주문번호'])   # 매도한 주문번호 행 supabase DB 에서 삭제
-                print(self.__df)
-                return data  # 완성된 체결통보 데이터 df 로 리턴
-
-
-            elif extracted_data['tr_id'] == 'H0STCNT0':    # 실시간 현재가
-                data_keys = self.__price_menulist.split('|')
-                data_values = data.split('^')
-                data = dict(zip(data_keys, data_values))  # zip으로 묶어서 딕셔너리 형태로 변환
-                data['tr_id'] = extracted_data['tr_id']   # data 에 tr_id 값 추가; 데이터 종류 구분하기 위해
-                df = pd.DataFrame(data)
-                return df   # 완성된 현재가 데이터 df 로 리턴
-
-        except:                                                   # 딕셔너리 형태의 문자열인 경우
-            data = json.loads(row_data)
-            tr_id = data['header']['tr_id']
-            if tr_id != 'PINGPONG':                               # PINGPONG 데이터가 아닌 경우
-                rt_cd = data['body']['rt_cd']
-
-                if rt_cd == '0':                                  # 정상 데이터인 경우
-                    self.__iv = data["body"]["output"]["iv"]      # iv 값 할당
-                    self.__key = data["body"]["output"]["key"]    # key 값 할당
-                    msg = data["body"]["msg1"]
-                    msg_cd = data["body"]["msg_cd"]
-                    return data  # 정상 데이터 리턴
-                else:
-                    return data  # 비정상 데이터 리턴
-
-            else:
-                return data   # PINGPONG 데이터 그대로 리턴
-
-    # AES256 DECODE
-    def __aes_cbc_base64_dec(self, cipher_text):
-        cipher = AES.new(self.__key.encode('utf-8'), AES.MODE_CBC, self.__iv.encode('utf-8'))
-        # data = bytes.decode(unpad(cipher.decrypt(b64decode(cipher_text)), AES.block_size))
-        data = unpad(cipher.decrypt(b64decode(cipher_text)), AES.block_size).decode('utf-8')
-        return data

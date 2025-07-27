@@ -63,6 +63,20 @@ def delete_data(oder_no):
 
     print("삭제 결과:", response)
 
+def update_data(주문번호: str, update_fields: dict):
+    try:
+        response = supabase.table("your_table_name") \
+            .update(update_fields) \
+            .eq("주문번호", 주문번호) \
+            .execute()
+
+        print("DB 업데이트 완료:", response)
+        return response
+    except Exception as e:
+        print("DB 업데이트 실패:", e)
+        return None
+
+
 # 테스트용
 def generate_order_id():
     number = random.randint(1, 999)  # 1부터 999까지

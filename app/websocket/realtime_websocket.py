@@ -51,10 +51,14 @@ async def combined_kis_task():
     async with websockets.connect(kis.url) as ws:  # kis 웹소켓 생성; 최초 한개만 생성해야 한다. 여러개 생성되면 치명적 에러 발생
         print("KIS 웹소켓에 연결됨")
 
+        # ============= 구독 요청 하는 부분 =======================
         # ws 객체에 순차적으로 구독 등록; 단 1개의 웹소켓으로 모두 구독 등록한다.; 이것이 핵심!!!
         await kis.subscribe(ws=ws, tr_id=tr_id_transaction)                   # 실시간 체결알람 구독 등록
         await kis.subscribe(ws=ws, tr_id=tr_id_price, code_list=code_list)    # 실시간 현재가 구독 등록
 
+
+
+        # =============== 데이터 수신하는 부분 =========================
         price_df = None
         trans_df = None
 
@@ -76,7 +80,7 @@ async def combined_kis_task():
                         df = trans_df.merge(
                             price_df[['종목코드', '현재가']], on='종목코드', how='left'
                         )
-                        json_data = df.to_dict(orient="records")
+                        json_data = df.to_dict(orient="records") # orient="records"; 딕셔너리 들의 리스트 형태로 변환
                         await broadcast(json.dumps({
                             "type": "stock_data",
                             "data": json_data
