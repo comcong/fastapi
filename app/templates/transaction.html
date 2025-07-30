@@ -45,7 +45,7 @@
 </head>
 <body>
 
-    <h1>실시간 체결 내역</h1>
+    <h1>잔고 내역</h1>
     <table id="data_table">
         <thead></thead>
         <tbody></tbody>
@@ -62,12 +62,15 @@
     const tableBody = document.querySelector("#data_table tbody");
     const messageBox = document.getElementById("messages");
 
+    // event.data를 JSON으로 파싱
     ws.onmessage = function(event) {
         const parsed = JSON.parse(event.data);
 
+        // 타입이 "stock_data"인 경우: 테이블 표시
         if (parsed.type === "stock_data") {
             const data = parsed.data;
 
+            // parsed.data 배열이 존재하지 않으면 무시
             if (!data || data.length === 0) return;
 
             // 🔹 자동으로 컬럼 키 추출
@@ -95,6 +98,7 @@
                 tableBody.appendChild(tr);
             });
 
+        // 타입이 "message"인 경우: 로그 출력
         } else if (parsed.type === "message") {
             const msg = parsed.data;
             const div = document.createElement("div");

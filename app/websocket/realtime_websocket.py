@@ -8,7 +8,7 @@ from app.db import kis_db
 
 connected_clients = set()  # 접속한 클라이언트들의 리스트
 task = None                # combined_kis_task() 중복 실행을 방지하기 위한 변수
-# latest_price_df = pd.DataFrame(columns=['종목코드', '현재가'])  # 마지막으로 수신된 실시간 현재가 데이터
+
 def jango_list_from_db() -> list[str]:
     data = kis_db.get_data()
     df = pd.DataFrame(data)
@@ -16,30 +16,16 @@ def jango_list_from_db() -> list[str]:
     # code_list = df['종목코드'].unique().tolist()
     return df
 
-def update_price_df(incoming_df: pd.DataFrame) -> pd.DataFrame:
+def update_jango_df(df: pd.DataFrame = None) -> pd.DataFrame:
     global jango_df  # 실시간 현재가 데이터 전역변수 사용
-    print('업데이트 함수 실행')
-    print('jango_df')
-    print(jango_df)
-    print()
-    print('incoming_df')
-    print(incoming_df)
-
-    incoming_df = incoming_df.rename(columns={'현재가': '새현재가'})  # 컬럼명 변경 (충돌 방지)
-    jango_df = pd.merge(jango_df, incoming_df, on='종목코드', how='left')  # 병합
-    print('jango_df: 2')
-    print('병합후 jango_df')
-    print(jango_df)
+    if df is None: df = pd.DataFrame(columns=["종목코드", "새현재가"])
+    jango_df = pd.merge(jango_df, df, on='종목코드', how='left')  # 병합
     jango_df['현재가'] = jango_df['현재가'].combine_first(jango_df['새현재가']) # NaN 처리: 새 값이 있으면 반영, 없으면 기존 값 유지
-    print('jango_df: 3')
-    print(jango_df)
     jango_df = jango_df[['주문번호', '체결시간', '종목코드', '체결수량', '체결단가', '현재가']]
-    print('jango_df: 4')
-    print(jango_df)
     return jango_df
 
 jango_df = jango_list_from_db()[['주문번호', '체결시간', '종목코드', '체결수량', '체결단가']]
-jango_df['현재가'] = None
+jango_df['현재가'] = ''
 
 
 pre_code_list = set(jango_df['종목코드'].unique().tolist()) # DB 에서 종목코드 가져옴
@@ -77,7 +63,14 @@ async def endpoint(fws: fws):
 
 
 async def combined_kis_task():
-    # global jango_df
+    jango_df = update_jango_df()
+    json_data = jango_df.to_dict(orient="records")  # orient="records"; 딕셔너리 들의 리스트 형태로 변환
+    await broadcast(json.dumps({
+        "type": "stock_data",
+        "data": json_data
+    }, ensure_ascii=False))
+    # print(json.dumps(json_data, ensure_ascii=False, indent=2))
+
 
     # 구독 등록할 tr_id 값 준비
     tr_id_price = 'H0STCNT0'       # 실시간 현재가 tr_id
@@ -100,8 +93,8 @@ async def combined_kis_task():
 
 
         # =============== 데이터 수신하는 부분 =========================
-        price_df = None
-        trans_df = None
+        # price_df = None
+        # trans_df = None
         while True:  # 데이터를 계속 수신한다.
 
             try:
@@ -113,11 +106,11 @@ async def combined_kis_task():
                 if isinstance(data, pd.DataFrame):    # 데이터가 데이터프레임인 경우
                     tr_id = data.iloc[0]['tr_id']
                     if tr_id == 'H0STCNT0':  # 실시간 현재가가 들어오는 경우
-                        jango_df = update_price_df(data[['종목코드', '현재가']].copy())
+                        jango_df = update_jango_df(data[['종목코드', '새현재가']].copy())
 
                     elif tr_id in ['H0STCNI9', 'H0STCNI0']:  # 체결통보 데이터
                         trans_df = data.copy()
-                        print('체결통보 df', price_df)
+                        print('체결통보 df', trans_df)
 
                         #  ==== 현재 보유한 종목코드 =====================================================
                         # code_list = trans_df['종목코드'].unique().tolist()  # 이 부분 부터 수정해 보자
@@ -145,8 +138,7 @@ async def combined_kis_task():
 
 
 
-                    print('챗 지피티')
-                    print(json.dumps(json_data, ensure_ascii=False, indent=2))
+                    # print(json.dumps(json_data, ensure_ascii=False, indent=2))
 
 
 
