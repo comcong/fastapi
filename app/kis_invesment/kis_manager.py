@@ -33,17 +33,24 @@ class kis_api:
             tr_id = listed_data[1]
             len_data =listed_data[2]
             data = listed_data[3]
-            if encrypted == '1':        # 암호화된 데이터인 경우
-                data = self.__aes_cbc_base64_dec(data)  # 데이터 복호화
 
             # 데이터를 딕셔너리 형태로 포장
             extracted_data = {
+                'encrypted': encrypted,
                 'tr_id': tr_id,
                 'len_data': len_data,
                 'data': data
             }
+            print('문자열에서 딕셔너리로 변환된 데이터', extracted_data)
 
-            if (extracted_data['tr_id'] == 'H0STCNI0') or (extracted_data['tr_id'] == 'H0STCNI9'):  # 실시간 체결통보
+            if extracted_data['encrypted'] == '1':        # 암호화된 데이터인 경우
+                print('추적1')
+                extracted_data['data'] = self.__aes_cbc_base64_dec(data)  # 데이터 복호화
+
+            # if (extracted_data['tr_id'] == 'H0STCNI0') or (extracted_data['tr_id'] == 'H0STCNI9'):  # 실시간 체결통보
+            if extracted_data['tr_id'] in ['H0STCNI0', 'H0STCNI9']:  # 실시간 체결통보
+                print('추적2')
+                print('문자열이 실시간 체결통보')
                 data_keys = self.__trans_menulist.split('|')
                 data_values = data.split('^')
                 data = dict(zip(data_keys, data_values))  # zip으로 묶어서 딕셔너리 형태로 변환
@@ -51,10 +58,12 @@ class kis_api:
 
                 # ======== 매수 체결시  df, DB 에 데이터 넣는 자리 ==============
                 if data['매도매수구분'] == '02':  # 01: 매도, 02: 매수     ==== 매수
+                    print('추적3')
                     self.buy_update(data)  # df, DB 데이터 업데이트  === 매수한 만큼 삽입
 
                 # ======== 매도 체결시  df, DB 에 데이터 빼는 자리 ==============
                 elif data['매도매수구분'] == '01':  # 01: 매도, 02: 매수  ==== 매도
+                    print('추적4')
                     self.sell_update(data)
                     # self.__df = self.__df.loc[self.__df['주문번호'] != data['주문번호']]  # 매도한 만큼 삭제
                     # kis_db.delete_data(data['주문번호'])   # 매도한 주문번호 행 supabase DB 에서 삭제
@@ -62,30 +71,38 @@ class kis_api:
                 return data  # 완성된 체결통보 데이터 df 로 리턴
 
 
-            elif extracted_data['tr_id'] == 'H0STCNT0':    # 실시간 현재가
+            elif extracted_data['tr_id'] == 'H0STCNT0':    # 실시간 현재가  H0STCNT0
+                print('추적5')
+                print('문자열이 실시간 현재가', extracted_data['data'])
                 data_keys = self.__price_menulist.split('|')
                 data_values = data.split('^')
                 data = dict(zip(data_keys, data_values))  # zip으로 묶어서 딕셔너리 형태로 변환
                 data['tr_id'] = extracted_data['tr_id']   # data 에 tr_id 값 추가; 데이터 종류 구분하기 위해
-                df = pd.DataFrame(data)
+                df = pd.DataFrame([data])
+                print('추적10', df)
                 return df   # 완성된 현재가 데이터 df 로 리턴
 
         except:                                                   # 딕셔너리 형태의 문자열인 경우
             data = json.loads(row_data)
+            print('추적6')
             tr_id = data['header']['tr_id']
-            if tr_id != 'PINGPONG':                               # PINGPONG 데이터가 아닌 경우
+            if tr_id != 'PINGPONG': # PINGPONG 데이터가 아닌 경우
+                print('추적7')
                 rt_cd = data['body']['rt_cd']
 
                 if rt_cd == '0':                                  # 정상 데이터인 경우
+                    print('추적8')
                     self.__iv = data["body"]["output"]["iv"]      # iv 값 할당
                     self.__key = data["body"]["output"]["key"]    # key 값 할당
                     msg = data["body"]["msg1"]
                     msg_cd = data["body"]["msg_cd"]
                     return data  # 정상 데이터 리턴
                 else:
+                    print('추적9')
                     return data  # 비정상 데이터 리턴
 
             else:
+                print('추적10')
                 return data   # PINGPONG 데이터 그대로 리턴
 
 
@@ -155,9 +172,11 @@ class kis_api:
 
     # AES256 DECODE
     def __aes_cbc_base64_dec(self, cipher_text):
+        print('암호화된 데이터: ', cipher_text)
         cipher = AES.new(self.__key.encode('utf-8'), AES.MODE_CBC, self.__iv.encode('utf-8'))
         # data = bytes.decode(unpad(cipher.decrypt(b64decode(cipher_text)), AES.block_size))
         data = unpad(cipher.decrypt(b64decode(cipher_text)), AES.block_size).decode('utf-8')
+        print('복호화된 데이터: ', data)
         return data
 
 
@@ -212,3 +231,10 @@ class kis_api:
             }
         }
         return senddata
+
+
+if __name__ == '__main__':
+    import asyncio
+    data = '0|H0STCNT0|003|005930^094751^71950^2^1350^1.91^71690.50^71000^72300^70600^72000^71900^1^8305216^595403999350^21115^28170^7055^136.06^3060313^4163762^5^0.51^29.46^090014^2^950^090708^5^-350^090030^2^1350^20250730^20^N^93994^113056^1668973^822214^0.14^10584139^78.47^0^^71000^005930^094751^71900^2^1300^1.84^71690.50^71000^72300^70600^72000^71900^2^8305218^595404143150^21116^28170^7054^136.06^3060315^4163762^5^0.51^29.46^090014^2^900^090708^5^-400^090030^2^1300^20250730^20^N^93985^112986^1668973^822144^0.14^10584139^78.47^0^^71000^005930^094751^72000^2^1400^1.98^71690.50^71000^72300^70600^72000^71900^75^8305293^595409543150^21116^28171^7055^136.06^3060315^4163837^1^0.51^29.46^090014^2^1000^090708^5^-300^090030^2^1400^20250730^20^N^93985^112986^1668973^822144^0.14^10584139^78.47^0^^71000'
+    kis = kis_api()
+    asyncio.run(kis.make_data(data))

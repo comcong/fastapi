@@ -55,56 +55,56 @@
     <div id="messages"></div>
 
     <script>
-        const protocol = location.protocol === "https:" ? "wss" : "ws";
-        const ws = new WebSocket(`${protocol}://${location.host}/ws/transaction`);
+    const protocol = location.protocol === "https:" ? "wss" : "ws";
+    const ws = new WebSocket(`${protocol}://${location.host}/ws/transaction`);
 
-        const tableHead = document.querySelector("#data_table thead");
-        const tableBody = document.querySelector("#data_table tbody");
-        const messageBox = document.getElementById("messages");
+    const tableHead = document.querySelector("#data_table thead");
+    const tableBody = document.querySelector("#data_table tbody");
+    const messageBox = document.getElementById("messages");
 
-        ws.onmessage = function(event) {
-            const parsed = JSON.parse(event.data);
+    ws.onmessage = function(event) {
+        const parsed = JSON.parse(event.data);
 
-            if (parsed.type === "stock_data") {
-                const data = parsed.data;
+        if (parsed.type === "stock_data") {
+            const data = parsed.data;
 
-                // 테이블 헤더가 비어 있을 때만 헤더 설정
-                if (tableHead.children.length === 0 && data.length > 0) {
-                    const headerRow = document.createElement("tr");
-                    Object.keys(data[0]).forEach(key => {
-                        const th = document.createElement("th");
-                        th.textContent = key;
-                        headerRow.appendChild(th);
-                    });
-                    tableHead.appendChild(headerRow);
-                }
+            if (!data || data.length === 0) return;
 
-                // 테이블 본문 재설정
-                tableBody.innerHTML = "";
-                data.forEach(row => {
-                    const tr = document.createElement("tr");
-                    Object.values(row).forEach(value => {
-                        const td = document.createElement("td");
-                        td.textContent = value;
-                        tr.appendChild(td);
-                    });
-                    tableBody.appendChild(tr);
+            // 🔹 자동으로 컬럼 키 추출
+            const columnKeys = Object.keys(data[0]);
+
+            // 🔹 테이블 헤더 갱신
+            tableHead.innerHTML = "";
+            const headerRow = document.createElement("tr");
+            columnKeys.forEach(key => {
+                const th = document.createElement("th");
+                th.textContent = key;
+                headerRow.appendChild(th);
+            });
+            tableHead.appendChild(headerRow);
+
+            // 🔹 테이블 본문 갱신
+            tableBody.innerHTML = "";
+            data.forEach(row => {
+                const tr = document.createElement("tr");
+                columnKeys.forEach(key => {
+                    const td = document.createElement("td");
+                    td.textContent = row[key]; // 가공 없이 그대로 출력
+                    tr.appendChild(td);
                 });
+                tableBody.appendChild(tr);
+            });
 
-            } else if (parsed.type === "message") {
-                const msg = parsed.data;
-                const div = document.createElement("div");
-                div.className = "message-line";
-
-                // 객체면 JSON 문자열로, 아니면 그대로 출력
-                div.textContent = typeof msg === 'object' ? JSON.stringify(msg, null, 2) : msg;
-
-                // 메시지 박스에 추가
-                messageBox.innerHTML = ""; // 기존 메시지 지우기
-                messageBox.appendChild(div); // 새 메시지 추가
-                messageBox.scrollTop = messageBox.scrollHeight; // 자동 스크롤
-            }
-        };
+        } else if (parsed.type === "message") {
+            const msg = parsed.data;
+            const div = document.createElement("div");
+            div.className = "message-line";
+            div.textContent = typeof msg === 'object' ? JSON.stringify(msg, null, 2) : msg;
+            messageBox.innerHTML = "";
+            messageBox.appendChild(div);
+            messageBox.scrollTop = messageBox.scrollHeight;
+        }
+    };
     </script>
 </body>
 </html>

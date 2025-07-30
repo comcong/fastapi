@@ -8,14 +8,41 @@ from app.db import kis_db
 
 connected_clients = set()  # 접속한 클라이언트들의 리스트
 task = None                # combined_kis_task() 중복 실행을 방지하기 위한 변수
-def get_code_list_from_db() -> list[str]:
+# latest_price_df = pd.DataFrame(columns=['종목코드', '현재가'])  # 마지막으로 수신된 실시간 현재가 데이터
+def jango_list_from_db() -> list[str]:
     data = kis_db.get_data()
     df = pd.DataFrame(data)
     df = df[df['체결수량'].astype(int) > 0]
-    code_list = df['종목코드'].unique().tolist()
-    return code_list
+    # code_list = df['종목코드'].unique().tolist()
+    return df
 
-pre_code_list = set(get_code_list_from_db()) # DB 에서 종목코드 가져옴
+def update_price_df(incoming_df: pd.DataFrame) -> pd.DataFrame:
+    global jango_df  # 실시간 현재가 데이터 전역변수 사용
+    print('업데이트 함수 실행')
+    print('jango_df')
+    print(jango_df)
+    print()
+    print('incoming_df')
+    print(incoming_df)
+
+    incoming_df = incoming_df.rename(columns={'현재가': '새현재가'})  # 컬럼명 변경 (충돌 방지)
+    jango_df = pd.merge(jango_df, incoming_df, on='종목코드', how='left')  # 병합
+    print('jango_df: 2')
+    print('병합후 jango_df')
+    print(jango_df)
+    jango_df['현재가'] = jango_df['현재가'].combine_first(jango_df['새현재가']) # NaN 처리: 새 값이 있으면 반영, 없으면 기존 값 유지
+    print('jango_df: 3')
+    print(jango_df)
+    jango_df = jango_df[['주문번호', '체결시간', '종목코드', '체결수량', '체결단가', '현재가']]
+    print('jango_df: 4')
+    print(jango_df)
+    return jango_df
+
+jango_df = jango_list_from_db()[['주문번호', '체결시간', '종목코드', '체결수량', '체결단가']]
+jango_df['현재가'] = None
+
+
+pre_code_list = set(jango_df['종목코드'].unique().tolist()) # DB 에서 종목코드 가져옴
 # first_subscribe_code = True # 최초 종목코드 등록 여부 정보
 
 # 모든 클라이언트들 에게 메시지 전송하는 함수
@@ -50,12 +77,15 @@ async def endpoint(fws: fws):
 
 
 async def combined_kis_task():
+    # global jango_df
 
     # 구독 등록할 tr_id 값 준비
     tr_id_price = 'H0STCNT0'       # 실시간 현재가 tr_id
     tr_id_transaction = 'H0STCNI9' # 실시간 체결알람 모의계좌용 tr_id      실전계좌: 'H0STCNI0'
 
     kis = kis_api()  # kis 객체 생성
+
+
 
     async with websockets.connect(kis.url) as ws:  # kis 웹소켓 생성; 최초 한개만 생성해야 한다. 여러개 생성되면 치명적 에러 발생
         print("KIS 웹소켓에 연결됨")
@@ -82,25 +112,41 @@ async def combined_kis_task():
 
                 if isinstance(data, pd.DataFrame):    # 데이터가 데이터프레임인 경우
                     tr_id = data.iloc[0]['tr_id']
-                    if tr_id == 'H0STCNT0':
-                        price_df = data.copy()
+                    if tr_id == 'H0STCNT0':  # 실시간 현재가가 들어오는 경우
+                        jango_df = update_price_df(data[['종목코드', '현재가']].copy())
+
                     elif tr_id in ['H0STCNI9', 'H0STCNI0']:  # 체결통보 데이터
                         trans_df = data.copy()
+                        print('체결통보 df', price_df)
 
                         #  ==== 현재 보유한 종목코드 =====================================================
                         # code_list = trans_df['종목코드'].unique().tolist()  # 이 부분 부터 수정해 보자
                         # ====  이 종목 리스트와 이미 구독된 종목 리스트 비교하여 구독 등록 및 해제 해 보자
                         #  ============================================================================
 
-                    if price_df is not None and trans_df is not None:  # price_df 와 trans_df 둘 다 준비된 경우에만 병합 수행
-                        df = trans_df.merge(
-                            price_df[['종목코드', '현재가']], on='종목코드', how='left'
-                        )
-                        json_data = df.to_dict(orient="records") # orient="records"; 딕셔너리 들의 리스트 형태로 변환
-                        await broadcast(json.dumps({
-                            "type": "stock_data",
-                            "data": json_data
-                        }, ensure_ascii=False))
+
+                    # # if price_df is not None and trans_df is not None:  # price_df 와 trans_df 둘 다 준비된 경우에만 병합 수행
+                    # df = jango_df.merge(price_df, on='종목코드', how='left')
+                    # print('df: ')
+                    # print(df.columns.tolist())
+                    #
+                    # # tr_id  고객ID      계좌번호    주문번호   원주문번호  ... 신용구분 신용대출일자 체결종목명   주문가격    현재가
+                    # df['수익률'] = ''
+                    #
+                    # print('병합된 df:')
+                    # print(df.columns.tolist())
+                    # print(df)
+
+                    json_data = jango_df.to_dict(orient="records") # orient="records"; 딕셔너리 들의 리스트 형태로 변환
+                    await broadcast(json.dumps({
+                        "type": "stock_data",
+                        "data": json_data
+                    }, ensure_ascii=False))
+
+
+
+                    print('챗 지피티')
+                    print(json.dumps(json_data, ensure_ascii=False, indent=2))
 
 
 
