@@ -109,7 +109,13 @@ async def combined_kis_task():
 
                     elif tr_id in ['H0STCNI9', 'H0STCNI0']:  # 체결통보 데이터
                         trans_df = data.copy()
-                        print('체결통보 df', trans_df)
+                        print('체결통보 df')
+                        print(trans_df.columns)
+                        if trans_df['매도매수구분'].values()[0] == '02':    # 01: 매도, 02: 매수
+                            jango_df = kis.buy_update(jango_df=jango_df, trans_df=trans_df)
+
+                        print('jango_df')
+                        print(jango_df)
 
                         #  ==== 현재 보유한 종목코드 =====================================================
                         # code_list = trans_df['종목코드'].unique().tolist()  # 이 부분 부터 수정해 보자
