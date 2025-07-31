@@ -7,6 +7,7 @@ from app.websocket.realtime_websocket import endpoint
 from pathlib import Path
 from app.db import kis_db
 from app.kis_invesment.account_balance import get_balance
+from app.websocket import realtime_websocket
 
 # lifespan 함수 정의
 @asynccontextmanager
@@ -15,7 +16,7 @@ async def lifespan(app: FastAPI):
     # 예: DB 연결, 백그라운드 작업 시작 등
     yield
     print("앱 종료 중 - 정리 작업")   # app 종료전 실행
-    # kis_db.insert_data()
+    kis_db.insert_data(realtime_websocket.jango_df.to_dict(orient="records"))
     # 예: 연결 종료, 태스크 정리 등
 
 app = FastAPI(

@@ -35,12 +35,12 @@ def update_jango_df(df: pd.DataFrame = None) -> pd.DataFrame:
         # print(jango_df)
         jango_df.loc[jango_df["새현재가"].notna(), "현재가"] = jango_df["새현재가"]
         jango_df = jango_df.drop(columns=['새현재가'])
-        jango_df = jango_df[['주문번호', '체결시간', '종목코드', '체결수량', '체결단가', '현재가']]
+        jango_df = jango_df[['주문번호', '종목명', '종목코드', '체결시간', '체결수량', '체결단가', '현재가']]
         # print('병합후 df')
         # print(jango_df)
         return jango_df
 
-jango_df = jango_list_from_db()[['주문번호', '체결시간', '종목코드', '체결수량', '체결단가', '현재가']]
+jango_df = jango_list_from_db()[['주문번호', '종목명', '종목코드', '체결시간', '체결수량', '체결단가', '현재가']]
 
 code_list = set(jango_df['종목코드'].unique().tolist()) # DB 에서 종목코드 가져옴
 
