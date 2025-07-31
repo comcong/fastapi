@@ -8,36 +8,37 @@ key: str = settings.SUPABASE_KEY
 supabase: Client = create_client(url, key)
 
 # 샘플 데이터
+# ['삼성전자', '한국전력', '한전기술', '현대차', '기아', '아주IB투자']
 #  ['005930', '015760', '052690', '005380', '000270', '027360']
-data = {
-    "종목코드": "052690",
-    "고객ID": "C001",
-    "계좌번호": "50142790",
-    "주문번호": "ORD001",
-    "원주문번호": "ORD000",
-    "매도매수구분": "매수",
-    "정정구분": "신규",
-    "주문종류": "지정가",
-    "주문조건": "없음",
-    "체결수량": 10,
-    "체결단가": 70000,
-    "현재가": 0,
-    "체결시간": "104512",
-    "거부여부": "N",
-    "체결여부": "Y",
-    "접수여부": "Y",
-    "지점번호": "001",
-    "주문수량": 10,
-    "계좌명": "홍길동",
-    "호가조건가격": 70000,
-    "주문거래소구분": "코스피",
-    "실시간체결창표시여부": "Y",
-    "필러": "",
-    "신용구분": "현금",
-    "신용대출일자": "",
-    "종목명": "삼성전자",
-    "주문가격": 70000
-}
+data = [
+        {"종목명": "현대차",
+         "종목코드": "005380",
+         "주문번호": "ORD0011",
+         "고객ID": "C001",
+         "계좌번호": "50142790",
+         "원주문번호": "ORD000",
+         "매도매수구분": "매수",
+         "정정구분": "신규",
+         "주문종류": "지정가",
+         "주문조건": "없음",
+         "체결수량": 10,
+         "체결단가": 70000,
+         "현재가": 0,
+         "체결시간": "104512",
+         "거부여부": "N",
+         "체결여부": "Y",
+         "접수여부": "Y",
+         "지점번호": "001",
+         "주문수량": 10,
+         "계좌명": "홍길동",
+         "호가조건가격": 70000,
+         "주문거래소구분": "코스피",
+         "실시간체결창표시여부": "Y",
+         "필러": "",
+         "신용구분": "현금",
+         "신용대출일자": "",
+         "주문가격": 70000}
+        ]
 
 def get_data():
     """Supabase에서 데이터 가져오기"""
@@ -51,31 +52,28 @@ def get_data():
 
 def insert_data(data):
     try:
-        response = supabase.table("transaction_info").insert(data).execute()
+        for i in data:
+            supabase.table("transaction_info").insert(i).execute()
         print("데이터 삽입 성공")
 
     except Exception as e:
         print("데이터 삽입 실패:", e)
 
-def delete_data(oder_no):
-    # 특정 주문번호로 행 삭제
-    order_id_to_delete = oder_no
-    response = supabase.table("transaction_info").delete().eq('종목코드', oder_no).execute()
-
-    print("삭제 결과:", response)
-
-def update_data(주문번호: str, update_fields: dict):
+def delete_data():
     try:
-        response = supabase.table("your_table_name") \
-            .update(update_fields) \
-            .eq("주문번호", 주문번호) \
-            .execute()
-
-        print("DB 업데이트 완료:", response)
-        return response
+        supabase.table("transaction_info").delete().neq("주문번호", None).execute()
+        print("데이터 삭제 성공")
     except Exception as e:
-        print("DB 업데이트 실패:", e)
-        return None
+        print("데이터 삭제 실패:", e)
+
+def update_data(data: list):
+    print(data)
+    try:
+        for i in data:
+            supabase.table("transaction_info").update(i).eq("주문번호", i['주문번호']).execute()
+        print("데이터 업데이트 성공:")
+    except Exception as e:
+        print("데이터 업데이트 실패:", e)
 
 
 # 테스트용
@@ -87,6 +85,6 @@ def generate_order_id():
 if __name__ == '__main__':
     # pass
     insert_data(data)
-    # delete_data('052960')
+    # delete_data('ORD001')
     # get_data()
 

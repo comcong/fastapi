@@ -10,38 +10,26 @@ from app.core.config import settings
 connected_clients = set()  # 접속한 클라이언트들의 리스트
 task = None                # combined_kis_task() 중복 실행을 방지하기 위한 변수
 
-def jango_list_from_db() -> list[str]:
+def jango_db():
     data = kis_db.get_data()
     df = pd.DataFrame(data)
-    df = df[df['체결수량'].astype(int) > 0]
-    # code_list = df['종목코드'].unique().tolist()
+    # df = df[df['체결수량'].astype(int) > 0]
+    df = df[['주문번호', '종목명', '종목코드', '체결시간', '체결수량', '체결단가', '현재가']].sort_values('주문번호')
+    # res = df['종목코드'].unique().tolist()
     return df
 
 def update_jango_df(df: pd.DataFrame = None) -> pd.DataFrame:
     global jango_df  # 실시간 현재가 데이터 전역변수 사용
     if df is None:
-        # df = pd.DataFrame([['005930', 0]], columns=["종목코드", "새현재가"])
         return jango_df[['주문번호', '체결시간', '종목코드', '체결수량', '체결단가', '현재가']]
     else:
-        # print('잔고df')
-        # print(jango_df)
-        # print()
-        # print('새로운데이터')
-        # print(df)
-        # print()
-
         jango_df = pd.merge(jango_df, df, on='종목코드', how='left')  # 병합
-        # print('병합직후')
-        # print(jango_df)
         jango_df.loc[jango_df["새현재가"].notna(), "현재가"] = jango_df["새현재가"]
         jango_df = jango_df.drop(columns=['새현재가'])
         jango_df = jango_df[['주문번호', '종목명', '종목코드', '체결시간', '체결수량', '체결단가', '현재가']]
-        # print('병합후 df')
-        # print(jango_df)
         return jango_df
 
-jango_df = jango_list_from_db()[['주문번호', '종목명', '종목코드', '체결시간', '체결수량', '체결단가', '현재가']]
-
+jango_df = jango_db()
 code_list = set(jango_df['종목코드'].unique().tolist()) # DB 에서 종목코드 가져옴
 
 
