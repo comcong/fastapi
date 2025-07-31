@@ -8,8 +8,9 @@ key: str = settings.SUPABASE_KEY
 supabase: Client = create_client(url, key)
 
 # 샘플 데이터
+#  ['005930', '015760', '052690', '005380', '000270', '027360']
 data = {
-    "tr_id": "HOSTCNI9",
+    "종목코드": "052690",
     "고객ID": "C001",
     "계좌번호": "50142790",
     "주문번호": "ORD001",
@@ -18,9 +19,9 @@ data = {
     "정정구분": "신규",
     "주문종류": "지정가",
     "주문조건": "없음",
-    "종목코드": "027360",
     "체결수량": 10,
     "체결단가": 70000,
+    "현재가": 0,
     "체결시간": "104512",
     "거부여부": "N",
     "체결여부": "Y",
@@ -59,7 +60,7 @@ def insert_data(data):
 def delete_data(oder_no):
     # 특정 주문번호로 행 삭제
     order_id_to_delete = oder_no
-    response = supabase.table("transaction_info").delete().eq('주문번호', oder_no).execute()
+    response = supabase.table("transaction_info").delete().eq('종목코드', oder_no).execute()
 
     print("삭제 결과:", response)
 
@@ -84,7 +85,8 @@ def generate_order_id():
 
 
 if __name__ == '__main__':
+    # pass
     insert_data(data)
-    # delete_data('ORD001')
+    # delete_data('052960')
     # get_data()
 

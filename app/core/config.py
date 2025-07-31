@@ -26,10 +26,23 @@ class Settings(BaseSettings):
     # 모의투자 여부
     KIS_USE_MOCK: bool = Field(default=True, description="모의투자 사용 여부")
 
-
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
         case_sensitive = True
+
+    @property
+    def url(self) -> str:
+        if self.KIS_USE_MOCK:
+            return "ws://ops.koreainvestment.com:31000"
+        else:
+            return "ws://ops.koreainvestment.com:21000"
+
+    @property
+    def tr_id_transaction(self) -> str:
+        if self.KIS_USE_MOCK:
+            return "H0STCNI9"
+        else:
+            return "H0STCNI0"
 
 settings = Settings()
