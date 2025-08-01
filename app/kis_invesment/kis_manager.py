@@ -4,6 +4,7 @@ from app.core.config import settings
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
 from base64 import b64decode
+import asyncio
 from app.db import kis_db
 import pandas as pd
 
@@ -15,7 +16,7 @@ class kis_api:
         self.__key = None
         self.__price_menulist = '종목코드|체결시간|새현재가|전일대비부호|전일대비|전일대비율|가중평균주식가격|시가|최고가|최저가|매도호가1|매수호가1|체결거래량|누적거래량|누적거래대금|매도체결건수|매수체결건수|순매수체결건수|체결강도|총매도수량|총매수수량|체결구분|매수비율|전일거래량대비등락율|시가시간|시가대비구분|시가대비|최고가시간|고가대비구분|고가대비|최저가시간|저가대비구분|저가대비|영업일자|신장운영구분코드|거래정지여부|매도호가잔량|매수호가잔량|총매도호가잔량|총매수호가잔량|거래량회전율|전일동시간누적거래량|전일동시간누적거래량비율|시간구분코드|임의종료구분코드|정적VI발동기준가'
         # self.__trans_menulist = '고객ID|계좌번호|주문번호|원주문번호|매도매수구분|정정구분|주문종류|주문조건|종목코드|체결수량|체결단가|체결시간|거부여부|체결여부|접수여부|지점번호|주문수량|계좌명|호가조건가격|주문거래소구분|실시간체결창표시여부|필러|신용구분|신용대출일자|종목명|주문가격'
-        self.__trans_menulist = '고객ID|계좌번호|주문번호|원주문번호|매도매수구분|정정구분|주문종류|주문조건|종목코드|체결수량|체결단가|체결시간|거부여부|체결여부|접수여부|지점번호|주문수량|계좌명|호가조건가격|주문거래소구분|실시간체결창표시여부|필러|종목명'
+        self.__trans_menulist = '고객ID|계좌번호|주문번호|원주문번호|매도매수구분|정정구분|주문종류|주문조건|종목코드|체결수량|체결단가|체결시간|거부여부|체결여부|접수여부|지점번호|주문수량|계좌명|호가조건가격|주문거래소구분|실시간체결창표시여부|종목명|필러'
         # self.__df = pd.DataFrame(kis_db.get_data())
         self.url = settings.url
 
@@ -50,8 +51,10 @@ class kis_api:
                 print('추적2')
                 print('문자열이 실시간 체결통보')
                 data_keys = self.__trans_menulist.split('|')
+                print('data_keys', data_keys)
                 print('key 개수: ', len(data_keys))
                 data_values = extracted_data['data'].split('^')
+                print('data_values', data_values)
                 print('value 개수: ', len(data_values))
                 data = dict(zip(data_keys, data_values))  # zip으로 묶어서 딕셔너리 형태로 변환
                 data['tr_id'] = extracted_data['tr_id']   # data 에 tr_id 값 추가; 데이터 종류 구분하기 위해
@@ -110,15 +113,24 @@ class kis_api:
 
 
 
-    def buy_update(self, jango_df, trans_df):
-        print('buy_update() 실행')
-        print(data)
-        주문번호 = trans_df['주문번호']
+    async def buy_update(self, ws, jango_df, trans_df, code_list):
+        # print('buy_update() 실행')
+        # print('jango_df: ', jango_df)
+        # print()
+        # print('trans_df: ', trans_df)
+        # print()
+        ord_num = trans_df['주문번호'].values[0]
+        # print('trans_df 주문번호: ', ord_num)
+        # print('잔고주문번호리스트: ', jango_df['주문번호'].values)
+        #
+        # print('trans_df 체결시간: ', trans_df['체결시간'].values[0])
+
 
         # 주문번호가 이미 존재하는지 확인
-        if 주문번호 in jango_df['주문번호'].values:
+        if ord_num in jango_df['주문번호'].values:
+            print('주문번호가 있는 경우')
             # 기존 행 가져오기
-            idx = jango_df[jango_df['주문번호'] == 주문번호].index[0] # 기존 주문번호가 있는 행번호 가져오기
+            idx = jango_df[jango_df['주문번호'] == ord_num].index[0] # 기존 주문번호가 있는 행번호 가져오기
 
             # 수량 누적 (int로 변환 주의)
             기존_수량 = int(jango_df.at[idx, '체결수량'])
@@ -129,6 +141,7 @@ class kis_api:
             jango_df.at[idx, '체결단가'] = trans_df['체결단가']
             jango_df.at[idx, '체결시간'] = trans_df['체결시간']
 
+            print('buy_update() 기존 주문이 있는 경우 실행 완료')
             return jango_df
 
             # # DB 업데이트도 필요하다면 별도 update 함수 사용
@@ -139,42 +152,57 @@ class kis_api:
             # })
 
         else:  # 새로운 주문번호라면, 새로운 행에 추가
+            print('주문번호가 없는 경우')
+            tr_id = 'H0STCNT0'
+            tran_code = trans_df['종목코드'].values[0]
             jango_df = pd.concat([jango_df, trans_df], ignore_index=True)
+
+            if tran_code not in code_list:
+                await self.subscribe(ws=ws, tr_id=tr_id, code_list=[tran_code])
+
             # kis_db.insert_data(data)
+            # print('jango_df:')
+            # print(jango_df)
+            print('buy_update() 기존 주문이 없는 경우 실행 완료')
             return jango_df
 
 
-    def sell_update(self, data):
-        주문번호 = data['주문번호']
+    def sell_update(self, jango_df, trans_df):
+        print('sell_update() 실행')
+        print(trans_df)
+        ord_num = trans_df['주문번호'].values[0]
 
         # 주문번호가 이미 존재하는지 확인
-        if 주문번호 in self.__df['주문번호'].values:
+        if ord_num in jango_df['주문번호'].values:
 
-            idx = self.__df[self.__df['주문번호'] == 주문번호].index[0] # 기존 주문번호가 있는 행번호 가져오기
+            idx = jango_df[jango_df['주문번호'] == ord_num].index[0] # 기존 주문번호가 있는 행번호 가져오기
 
             # 수량 차감 (int로 변환 주의)
-            기존_수량 = int(self.__df.at[idx, '체결수량'])
-            매도_수량 = int(data['체결수량'])
-            새로운_수량 = max(0, 기존_수량 - 매도_수량)  # 음수 방지
+            기존_수량 = int(jango_df.at[idx, '체결수량'])
+            매도_수량 = int(trans_df['체결수량'])
+            # 새로운_수량 = max(0, 기존_수량 - 매도_수량)  # 음수 방지
+            새로운_수량 = (기존_수량 - 매도_수량)  # 음수 방지
 
-            self.__df.at[idx, '체결수량'] = str(새로운_수량)
-            self.__df.at[idx, '체결단가'] = data['체결단가']
-            self.__df.at[idx, '체결시간'] = data['체결시간']
+            jango_df.at[idx, '체결수량'] = str(새로운_수량)
+            jango_df.at[idx, '체결단가'] = trans_df['체결단가']
+            jango_df.at[idx, '체결시간'] = trans_df['체결시간']
 
             if 새로운_수량 == 0:         # 수량이 모두 없어지면 행 제거
-                self.__df.drop(index=idx, inplace=True)
-                kis_db.delete_data(주문번호)
+                jango_df.drop(index=idx, inplace=True)
+                # kis_db.delete_data(주문번호)
+                return jango_df
 
             else:
-                # 수량이 0이 아닐 때만 DB 업데이트
-                kis_db.update_data(주문번호, {
-                    '체결수량': str(새로운_수량),
-                    '체결단가': data['체결단가'],
-                    '체결시간': data['체결시간']
-                })
+                # # 수량이 0이 아닐 때만 DB 업데이트
+                # kis_db.update_data(주문번호, {
+                #     '체결수량': str(새로운_수량),
+                #     '체결단가': data['체결단가'],
+                #     '체결시간': data['체결시간']
+                # })
+                return jango_df
 
         else:
-            print(f"주문번호 {주문번호} 가 없는 매도가 체결되었습니다. 체결 데이터 확인 필요!!")
+            print(f"주문번호 {ord_num} 가 없는 매도가 체결되었습니다. 체결 데이터 확인 필요!!")
 
 
 

@@ -16,6 +16,7 @@ async def lifespan(app: FastAPI):
     # 예: DB 연결, 백그라운드 작업 시작 등
     yield
     print("앱 종료 중 - 정리 작업")   # app 종료전 실행
+    # print(realtime_websocket.jango_df.to_dict(orient="records"))
     kis_db.delete_data()
     kis_db.insert_data(realtime_websocket.jango_df.to_dict(orient="records"))
 
