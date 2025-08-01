@@ -165,7 +165,7 @@ async def combined_kis_task():
 
                     json_data = jango_df.to_dict(orient="records") # orient="records"; 딕셔너리 들의 리스트 형태로 변환
                     keys_to_strip_zeros = ['주문번호', '체결수량', '체결단가']
-                    # json_data = strip_zeros(json_data, keys_to_strip_zeros)  # 숫자 앞 0을 없애주는 함수
+                    json_data = strip_zeros(json_data, keys_to_strip_zeros)  # 숫자 앞 0을 없애주는 함수
                     await broadcast(json.dumps({
                         "type": "stock_data",
                         "data": json_data
