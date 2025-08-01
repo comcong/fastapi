@@ -11,8 +11,7 @@ connected_clients = set()  # 접속한 클라이언트들의 리스트
 task = None                # combined_kis_task() 중복 실행을 방지하기 위한 변수
 
 
-def strip_zeros(json_list: list[dict]) -> list[dict]:
-    keys_to_strip_zeros = ['주문번호', '체결수량', '체결단가']
+def strip_zeros(json_list: list[dict], keys_to_strip_zeros) -> list[dict]:
     for record in json_list:
         for key in keys_to_strip_zeros:
             if key in record and record[key]:
@@ -165,7 +164,8 @@ async def combined_kis_task():
 
 
                     json_data = jango_df.to_dict(orient="records") # orient="records"; 딕셔너리 들의 리스트 형태로 변환
-                    # json_data = strip_zeros(json_data)
+                    keys_to_strip_zeros = ['주문번호', '체결수량', '체결단가']
+                    # json_data = strip_zeros(json_data, keys_to_strip_zeros)  # 숫자 앞 0을 없애주는 함수
                     await broadcast(json.dumps({
                         "type": "stock_data",
                         "data": json_data
