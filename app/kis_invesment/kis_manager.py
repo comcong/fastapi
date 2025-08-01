@@ -114,7 +114,7 @@ class kis_api:
 
 
     async def buy_update(self, ws, jango_df, trans_df, code_list):
-        # print('buy_update() 실행')
+        print('buy_update() 실행')
         # print('jango_df: ', jango_df)
         # print()
         # print('trans_df: ', trans_df)
@@ -134,7 +134,9 @@ class kis_api:
 
             # 수량 누적 (int로 변환 주의)
             기존_수량 = int(jango_df.at[idx, '체결수량'])
-            신규_수량 = int(trans_df['체결수량'])
+            print('기존수량: ', 기존_수량)
+            신규_수량 = int(trans_df['체결수량'].values[0])
+            print('신규_수량: ', 신규_수량)
             jango_df.at[idx, '체결수량'] = str(기존_수량 + 신규_수량)
 
             # 체결단가는 최신값으로 갱신
@@ -157,7 +159,7 @@ class kis_api:
             tran_code = trans_df['종목코드'].values[0]
             jango_df = pd.concat([jango_df, trans_df], ignore_index=True)
 
-            if tran_code not in code_list:
+            if tran_code not in code_list:  # 새로운 종목 구독 추가
                 await self.subscribe(ws=ws, tr_id=tr_id, code_list=[tran_code])
 
             # kis_db.insert_data(data)
