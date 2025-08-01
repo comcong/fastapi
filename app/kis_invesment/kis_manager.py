@@ -143,6 +143,9 @@ class kis_api:
             jango_df.at[idx, '체결단가'] = trans_df['체결단가']
             jango_df.at[idx, '체결시간'] = trans_df['체결시간']
 
+            # 1000 주 주문하여 쪼개져 체결될 때, json 직렬화에 실패했다고 에러 뜨면 적용 해 봐!! # NaN → None 처리
+            # jango_df = jango_df.where(pd.notnull(jango_df), None)
+
             print('buy_update() 기존 주문이 있는 경우 실행 완료')
             return jango_df
 

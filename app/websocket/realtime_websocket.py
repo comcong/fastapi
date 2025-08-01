@@ -169,9 +169,9 @@ async def combined_kis_task():
                     await broadcast(json.dumps({
                         "type": "stock_data",
                         "data": json_data
-                    }, ensure_ascii=False))
+                    }, ensure_ascii=False, default=str))
 
-                    print(json.dumps(json_data, ensure_ascii=False, indent=2))
+                    print(json.dumps(json_data, ensure_ascii=False, default=str))
 
 
 
