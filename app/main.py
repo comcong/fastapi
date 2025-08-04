@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 import uvicorn
 from app.core.config import settings
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, WebSocket
 from fastapi.templating import Jinja2Templates
 from app.websocket.realtime_websocket import endpoint
 from pathlib import Path
@@ -12,6 +12,7 @@ from app.websocket import realtime_websocket
 # lifespan 함수 정의
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # asyncio.create_task(start_kis_receiver())
     print("앱 시작 전 - 초기화 작업")  # app 실행전 실행
     # 예: DB 연결, 백그라운드 작업 시작 등
     yield
@@ -48,6 +49,13 @@ async def current_price(request: Request):
 @app.get("/transaction")
 async def transaction(request: Request):
     return templates.TemplateResponse("transaction.html", {"request": request})
+
+
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    while True:
+        await websocket.send_text("data")
 
 # fastapi 엔드포인트 등록
 app.websocket("/ws/transaction")(endpoint)
