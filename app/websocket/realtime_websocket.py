@@ -6,12 +6,16 @@ import asyncio
 import pandas as pd
 from app.db import kis_db
 from app.core.config import settings
+import traceback
 
 connected_clients = set()  # 접속한 클라이언트들의 리스트
 task = None                # combined_kis_task() 중복 실행을 방지하기 위한 변수
 
 
 def strip_zeros(json_list: list[dict], keys_to_strip_zeros) -> list[dict]:
+    print('strip_zeros 실행')
+    print('json_list: ', json_list)
+    print('keys_to_strip_zeros: ', keys_to_strip_zeros)
     for record in json_list:
         for key in keys_to_strip_zeros:
             if key in record and record[key]:
@@ -56,9 +60,9 @@ def update_jango_df(df: pd.DataFrame = None) -> pd.DataFrame:
 
 
 jango_df = jango_db()
-code_list = []
-if not jango_df.empty:
-    code_list = jango_df['종목코드'].unique().tolist() # DB 에서 종목코드 가져옴
+# code_list = []
+# if not jango_df.empty:
+code_list = jango_df['종목코드'].unique().tolist() # DB 에서 종목코드 가져옴
 
 
 # 모든 클라이언트들 에게 메시지 전송하는 함수
@@ -98,14 +102,15 @@ async def combined_kis_task():
     global jango_df
 
     # print('update_jango_df() 실행 후')
-    if not jango_df.empty:
-        json_data = jango_df.to_dict(orient="records")  # orient="records"; 딕셔너리 들의 리스트 형태로 변환
-        json_data = strip_zeros(json_data)
-        await broadcast(json.dumps({
-            "type": "stock_data",
-            "data": json_data
-        }, ensure_ascii=False))
-        # print(json.dumps(json_data, ensure_ascii=False, indent=2))
+    # if not jango_df.empty:
+    json_data = jango_df.to_dict(orient="records")  # orient="records"; 딕셔너리 들의 리스트 형태로 변환
+    keys_to_strip_zeros = ['주문번호', '체결수량', '체결단가']
+    json_data = strip_zeros(json_data, keys_to_strip_zeros)
+    await broadcast(json.dumps({
+        "type": "stock_data",
+        "data": json_data
+    }, ensure_ascii=False))
+    # print(json.dumps(json_data, ensure_ascii=False, indent=2))
 
 
     # 구독 등록할 tr_id 값 준비
@@ -161,6 +166,7 @@ async def combined_kis_task():
 
                         print('jango_df')
                         print(jango_df)
+                        print(type(jango_df))
 
 
                     json_data = jango_df.to_dict(orient="records") # orient="records"; 딕셔너리 들의 리스트 형태로 변환
@@ -182,7 +188,8 @@ async def combined_kis_task():
                     }, ensure_ascii=False))
 
             except Exception as e:
-                print("웹소켓 수신 오류:", e)
+                print("웹소켓 수신 오류: 1", e)
+                traceback.print_exc()
                 # break
                 await asyncio.sleep(5)
                 continue  # 통신 끊겼을 때 재 연결
