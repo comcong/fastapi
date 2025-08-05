@@ -70,11 +70,10 @@
         if (parsed.type === "stock_data") {
             const data = parsed.data;
 
-            // parsed.data 배열이 존재하지 않으면 무시
-            if (!data || data.length === 0) return;
+            if (!data) return;
 
-            // 🔹 자동으로 컬럼 키 추출
-            const columnKeys = Object.keys(data[0]);
+            // 🔹 자동으로 컬럼 키 추출 (데이터가 없어도, 컬럼 키는 서버에서 보내줬다고 가정)
+            const columnKeys = Object.keys(data[0] || {});  // ← 데이터가 없으면 빈 객체라도 컬럼 추출
 
             // 🔹 테이블 헤더 갱신
             tableHead.innerHTML = "";
@@ -86,17 +85,19 @@
             });
             tableHead.appendChild(headerRow);
 
-            // 🔹 테이블 본문 갱신
+            // 🔹 데이터가 있을 때만 본문 출력
             tableBody.innerHTML = "";
-            data.forEach(row => {
-                const tr = document.createElement("tr");
-                columnKeys.forEach(key => {
-                    const td = document.createElement("td");
-                    td.textContent = row[key]; // 가공 없이 그대로 출력
-                    tr.appendChild(td);
+            if (data.length > 0) {
+                data.forEach(row => {
+                    const tr = document.createElement("tr");
+                    columnKeys.forEach(key => {
+                        const td = document.createElement("td");
+                        td.textContent = row[key]; // 가공 없이 그대로 출력
+                        tr.appendChild(td);
+                    });
+                    tableBody.appendChild(tr);
                 });
-                tableBody.appendChild(tr);
-            });
+            }
 
         // 타입이 "message"인 경우: 로그 출력
         } else if (parsed.type === "message") {
