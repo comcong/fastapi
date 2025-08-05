@@ -24,8 +24,9 @@ async def start_kis_receiver():
     while True:
         try:
             await asyncio.sleep(1)
+            print("화일문 1")
             raw_data = await ws.recv()  # ws로부터 데이터 수신
-            print("화일문 실행중")
+            print("화일문 2")
             print("수신된 원본 데이터: ")
             print(raw_data)
 
