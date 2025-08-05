@@ -1,3 +1,4 @@
+# kis_receiver.py
 import asyncio
 import json
 import pandas as pd
@@ -13,6 +14,7 @@ jango_df: pd.DataFrame = pd.DataFrame()
 
 # 여기를 실제 한투 API WebSocket 수신으로 교체 가능
 async def start_kis_receiver():
+
     global jango_df
     # global code_list
     jango_df = jango_db()
@@ -21,36 +23,35 @@ async def start_kis_receiver():
         await kis.subscribe(ws=ws)
         await kis.subscribe(ws=ws, tr_id='H0STCNT0', code_list=code_list)
 
-    while True:
-        try:
-            await asyncio.sleep(1)
-            print("화일문 1")
-            raw_data = await ws.recv()  # ws로부터 데이터 수신
-            print("화일문 2")
-            print("수신된 원본 데이터: ")
-            print(raw_data)
+        while True:
+            try:
+                raw_data = await ws.recv()  # ws로부터 데이터 수신
+                print("수신된 원본 데이터: ")
+                print(raw_data)
+                data = await kis.make_data(raw_data)  # 데이터 가공
+                print("수신된 가공 데이터: ")
+                print(data)
 
-            data = await kis.make_data(raw_data)  # 데이터 가공
-            print("수신된 가공 데이터: ")
-            print(data)
+                if isinstance(data, pd.DataFrame):
+                    json_data = data.to_dict(orient="records")
+                    data = {"type": "stock_data", "data": json_data}
+                    await websocket_manager.manager.broadcast(json.dumps(data))
+                    print('데이터프레임 전송완료')
 
-            if isinstance(data, pd.DataFrame):
-                json_data = data.to_dict(orient="records")
-                data = {"type": "stock_data", "data": json_data}
-                await websocket_manager.manager.broadcast(json.dumps(data))
-                print('데이터프레임 전송완료')
+                else:
+                    jango_json_data = jango_df.to_dict(orient="records")
+                    stock_data = {"type": "stock_data", "data": jango_json_data}
+                    await websocket_manager.manager.broadcast(json.dumps(stock_data))
 
-            else:
-                json_data = data
-                data = {"type": "message", "data": json_data}
-                await websocket_manager.manager.broadcast(data)
-                print('json 전송완료')
-
+                    msg_data = {"type": "message", "data": data}
+                    await websocket_manager.manager.broadcast(json.dumps(msg_data))
+                    print('json 전송완료')
 
 
-        except Exception as e:
-            print("웹소켓 수신 오류: 1", e)
-            traceback.print_exc()
+
+            except Exception as e:
+                print("웹소켓 수신 오류: 1", e)
+                traceback.print_exc()
 
 
 
