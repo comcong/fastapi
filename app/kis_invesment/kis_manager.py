@@ -235,7 +235,7 @@ class kis_api:
     # ================== 구독 등록하는 부분 ========================== #
     # ============================================================= #
 
-    async def subscribe(self, ws, tr_id, tr_type='1', code_list=None):
+    async def subscribe(self, ws, tr_id=settings.tr_id_transaction, tr_type='1', code_list=None):
         print('====================================')
         print('kis_api.subscribe 함수 실행')
         print('====================================')
@@ -271,6 +271,7 @@ class kis_api:
         }
         return senddata
 
+kis = kis_api()
 
 if __name__ == '__main__':
     import asyncio
