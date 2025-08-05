@@ -8,10 +8,6 @@
             font-family: Arial, sans-serif;
         }
 
-        h1 {
-            margin-top: 30px;
-        }
-
         table {
             border-collapse: collapse;
             width: 100%;
@@ -47,7 +43,18 @@
 
     <h1>잔고 내역</h1>
     <table id="data_table">
-        <thead></thead>
+        <thead>
+            <tr>
+                <th>주문번호</th>
+                <th>종목명</th>
+                <th>종목코드</th>
+                <th>체결시간</th>
+                <th>체결수량</th>
+                <th>체결단가</th>
+                <th>현재가</th>
+
+            </tr>
+        </thead>
         <tbody></tbody>
     </table>
 
@@ -58,48 +65,41 @@
     const protocol = location.protocol === "https:" ? "wss" : "ws";
     const ws = new WebSocket(`${protocol}://${location.host}/ws`);
 
-    const tableHead = document.querySelector("#data_table thead");
     const tableBody = document.querySelector("#data_table tbody");
     const messageBox = document.getElementById("messages");
 
-    // event.data를 JSON으로 파싱
     ws.onmessage = function(event) {
         const parsed = JSON.parse(event.data);
-
-        // 타입이 "stock_data"인 경우: 테이블 표시
         if (parsed.type === "stock_data") {
             const data = parsed.data;
 
-            if (!data) return;
-
-            // 🔹 자동으로 컬럼 키 추출 (데이터가 없어도, 컬럼 키는 서버에서 보내줬다고 가정)
-            const columnKeys = Object.keys(data[0] || {});  // ← 데이터가 없으면 빈 객체라도 컬럼 추출
-
-            // 🔹 테이블 헤더 갱신
-            tableHead.innerHTML = "";
-            const headerRow = document.createElement("tr");
-            columnKeys.forEach(key => {
-                const th = document.createElement("th");
-                th.textContent = key;
-                headerRow.appendChild(th);
-            });
-            tableHead.appendChild(headerRow);
-
-            // 🔹 데이터가 있을 때만 본문 출력
+            // 테이블 본문 비우기
             tableBody.innerHTML = "";
-            if (data.length > 0) {
-                data.forEach(row => {
-                    const tr = document.createElement("tr");
-                    columnKeys.forEach(key => {
-                        const td = document.createElement("td");
-                        td.textContent = row[key]; // 가공 없이 그대로 출력
-                        tr.appendChild(td);
-                    });
-                    tableBody.appendChild(tr);
-                });
+
+            if (!data || data.length === 0) {
+                // 데이터가 없을 경우: "데이터가 없습니다" 표시
+                const tr = document.createElement("tr");
+                const td = document.createElement("td");
+                td.colSpan = 7;
+                td.textContent = "데이터가 없습니다.";
+                td.style.fontStyle = "italic";
+                tr.appendChild(td);
+                tableBody.appendChild(tr);
+                return;
             }
 
-        // 타입이 "message"인 경우: 로그 출력
+            // 데이터가 있는 경우: 본문 갱신
+            data.forEach(row => {
+                const tr = document.createElement("tr");
+                const keys = ["주문번호", "종목명", "종목코드", "체결시간", "체결수량", "체결단가", "현재가"];
+                keys.forEach(key => {
+                    const td = document.createElement("td");
+                    td.textContent = row[key] || "";
+                    tr.appendChild(td);
+                });
+                tableBody.appendChild(tr);
+            });
+
         } else if (parsed.type === "message") {
             const msg = parsed.data;
             const div = document.createElement("div");

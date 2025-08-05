@@ -7,6 +7,7 @@ import uvicorn
 
 import kis_receiver
 import websocket_manager
+from app.db import kis_db
 
 # templates 경로 설정
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -21,6 +22,8 @@ async def lifespan(app: FastAPI):
     task = asyncio.create_task(kis_receiver.start_kis_receiver())  # 백그라운드에서 start_kis_receiver() 실행
     yield
     task.cancel()
+    kis_db.delete_data()
+    kis_db.insert_data(kis_receiver.jango_df.to_dict(orient="records"))
 
 app = FastAPI(lifespan=lifespan)
 
