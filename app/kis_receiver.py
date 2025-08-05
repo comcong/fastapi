@@ -10,13 +10,10 @@ from app.db import kis_db
 from app.kis_invesment.kis_manager import kis
 
 jango_df: pd.DataFrame = pd.DataFrame()
-# code_list: list = []
 
-# 여기를 실제 한투 API WebSocket 수신으로 교체 가능
 async def start_kis_receiver():
 
     global jango_df
-    # global code_list
     jango_df = jango_db()
     code_list = jango_df['종목코드'].unique().tolist() # DB 에서 종목코드 가져옴
     async with websockets.connect(kis.url) as ws:
@@ -39,10 +36,6 @@ async def start_kis_receiver():
                     print('데이터프레임 전송완료')
 
                 else:
-                    jango_json_data = jango_df.to_dict(orient="records")
-                    stock_data = {"type": "stock_data", "data": jango_json_data}
-                    await websocket_manager.manager.broadcast(json.dumps(stock_data))
-
                     msg_data = {"type": "message", "data": data}
                     await websocket_manager.manager.broadcast(json.dumps(msg_data))
                     print('json 전송완료')
@@ -62,3 +55,8 @@ def jango_db():
     col_names = ['주문번호', '종목명', '종목코드', '체결시간', '체결수량', '체결단가', '현재가']
     jango_df = pd.DataFrame(supa_db, columns=col_names)
     return jango_df
+
+async def send_initial_data(websocket):
+    jango_json_data = jango_df.to_dict(orient="records")
+    stock_data = {"type": "stock_data", "data": jango_json_data}
+    await websocket.send_text(json.dumps(stock_data))

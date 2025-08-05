@@ -36,6 +36,7 @@ async def transaction(request: Request):
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket_manager.manager.connect(websocket)
+    await kis_receiver.send_initial_data(websocket)
     try:
         while True:
             await websocket.receive_text()  # 클라이언트 메시지를 무시
