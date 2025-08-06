@@ -14,6 +14,7 @@ jango_df: pd.DataFrame = pd.DataFrame()
 async def start_kis_receiver():
     global jango_df
     jango_df = jango_db()
+    # 체결시간_포맷()
     code_list = jango_df['종목코드'].unique().tolist() # DB 에서 종목코드 가져옴
     async with websockets.connect(kis.url) as ws:
         await kis.subscribe(ws=ws)
@@ -75,12 +76,14 @@ async def start_kis_receiver():
 
 def jango_db():
     supa_db = kis_db.get_data()
-    col_names = ['주문번호', '종목명', '종목코드', '체결시간', '주문수량', '체결수량', '체결단가', '현재가']
+    col_names = ['주문번호', '종목명', '종목코드', '체결시간', '주문수량', '체결수량', '체결단가', '현재가', '수익률']
     jango_df = pd.DataFrame(supa_db, columns=col_names)
     return jango_df
 
 async def send_initial_data(websocket):
     jango_json_data = strip_zeros(jango_df.to_dict(orient="records"))
+    print('직렬화 전')
+    print(jango_json_data)
     stock_data = {"type": "stock_data", "data": jango_json_data}
     await websocket.send_text(json.dumps(stock_data))
 
@@ -104,4 +107,20 @@ def update_jango_df(df: pd.DataFrame = None) -> pd.DataFrame:
         jango_df = pd.merge(jango_df, df, on='종목코드', how='left')  # 병합
         jango_df.loc[jango_df["새현재가"].notna(), "현재가"] = jango_df["새현재가"]
         jango_df = jango_df.drop(columns=['새현재가'])
+
+        fee_rate = 0.00015
+        tax_rate = 0.002
+        매수가 = jango_df['체결단가']
+        매수_수수료 = 매수가 * fee_rate
+        실제_매수금액 = 매수가 + 매수_수수료
+
+        매도가 = jango_df['현재가']
+        매도_수수료 = 매도가 * fee_rate
+        세금 = 매도가 * tax_rate
+        실제_매도금액 = 매도가 - 매도_수수료 - 세금
+
+        jango_df['수익률'] = round(((실제_매도금액 - 실제_매수금액) / 실제_매수금액) * 100, 2)
+
+
         return jango_df
+

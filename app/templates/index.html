@@ -54,6 +54,7 @@
                 <th>체결수량</th>
                 <th>체결단가</th>
                 <th>현재가</th>
+                <th>수익률</th>
 
             </tr>
         </thead>
@@ -70,6 +71,12 @@
     const tableBody = document.querySelector("#data_table tbody");
     const messageBox = document.getElementById("messages");
 
+    // 체결시간 문자열을 "HHMMSS" → "HH:MM:SS" 형식으로 변환
+    function formatTimeString(hhmmss) {
+        if (typeof hhmmss !== 'string' || hhmmss.length !== 6) return hhmmss;
+        return hhmmss.slice(0, 2) + ':' + hhmmss.slice(2, 4) + ':' + hhmmss.slice(4, 6);
+    }
+
     ws.onmessage = function(event) {
         const parsed = JSON.parse(event.data);
         if (parsed.type === "stock_data") {
@@ -79,10 +86,9 @@
             tableBody.innerHTML = "";
 
             if (!data || data.length === 0) {
-                // 데이터가 없을 경우: "데이터가 없습니다" 표시
                 const tr = document.createElement("tr");
                 const td = document.createElement("td");
-                td.colSpan = 7;
+                td.colSpan = 9;
                 td.textContent = "데이터가 없습니다.";
                 td.style.fontStyle = "italic";
                 tr.appendChild(td);
@@ -90,13 +96,20 @@
                 return;
             }
 
-            // 데이터가 있는 경우: 본문 갱신
+            // 데이터가 있는 경우 테이블 업데이트
             data.forEach(row => {
                 const tr = document.createElement("tr");
-                const keys = ["주문번호", "종목명", "종목코드", "체결시간", "주문수량", "체결수량", "체결단가", "현재가"];
+                const keys = ["주문번호", "종목명", "종목코드", "체결시간", "주문수량", "체결수량", "체결단가", "현재가", "수익률"];
                 keys.forEach(key => {
                     const td = document.createElement("td");
-                    td.textContent = row[key] || "";
+                    let value = row[key] || "";
+
+                    // 체결시간 포맷 적용
+                    if (key === "체결시간") {
+                        value = formatTimeString(value);
+                    }
+
+                    td.textContent = value;
                     tr.appendChild(td);
                 });
                 tableBody.appendChild(tr);
@@ -112,6 +125,7 @@
             messageBox.scrollTop = messageBox.scrollHeight;
         }
     };
-    </script>
+</script>
+
 </body>
 </html>
