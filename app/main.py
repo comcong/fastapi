@@ -23,6 +23,10 @@ async def lifespan(app: FastAPI):
     task = asyncio.create_task(kis_receiver.start_kis_receiver())  # 백그라운드에서 start_kis_receiver() 실행
     yield
     task.cancel()
+    try:
+        await task
+    except asyncio.CancelledError:
+        pass
     kis_db.delete_data()
     kis_db.insert_data(kis_receiver.jango_df.to_dict(orient="records"))
 
