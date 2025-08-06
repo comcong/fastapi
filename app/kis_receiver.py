@@ -115,7 +115,7 @@ def update_jango_df(df: pd.DataFrame = None) -> pd.DataFrame:
         print('새현재가', jango_df["새현재가"])
         jango_df.loc[jango_df["새현재가"].notna(), "현재가"] = jango_df["새현재가"]
         jango_df = jango_df.drop(columns=['새현재가'])
-        jango_df = jango_df[['주문번호', '종목명', '종목코드', '체결시간', '체결수량', '체결단가', '현재가']]
+        jango_df = jango_df[['주문번호', '종목명', '종목코드', '체결시간', '주문수량', '체결수량', '체결단가', '현재가']]
         # print('update_jango_df() jango_df')
         # print(jango_df)
         return jango_df
