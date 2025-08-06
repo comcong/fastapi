@@ -45,6 +45,7 @@ async def start_kis_receiver():
                         trans_df = data.copy()
                         print('체결통보 df')
                         print(jango_df)
+                        print(jango_df.columns)
                         if trans_df['매도매수구분'].values[0] == '02':    # 01: 매도, 02: 매수
                             jango_df = await kis.buy_update(ws=ws, jango_df=jango_df, trans_df=trans_df)
 
