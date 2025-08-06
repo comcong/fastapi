@@ -17,12 +17,11 @@ async def start_kis_receiver():
     code_list = jango_df['종목코드'].unique().tolist() # DB 에서 종목코드 가져옴
     async with websockets.connect(kis.url) as ws:
         await kis.subscribe(ws=ws)
-        print('첫 code_list', code_list)
         await kis.subscribe(ws=ws, tr_id='H0STCNT0', code_list=code_list)
 
         while True:
             try:
-                raw_data = await ws.recv()  # ws로부터 데이터 수신
+                raw_data = await ws.recv()        # ws로부터 데이터 수신
                 # print("수신된 원본 데이터: ")
                 # print(raw_data)
                 data = await kis.make_data(raw_data)  # 데이터 가공
@@ -31,7 +30,7 @@ async def start_kis_receiver():
 
                 if isinstance(data, pd.DataFrame):
                     tr_id = data.iloc[0]['tr_id']
-                    if tr_id == 'H0STCNT0':  # 실시간 현재가가 들어오는 경우
+                    if tr_id == 'H0STCNT0':            # 실시간 현재가가 들어오는 경우
                         print('tr_id == "H0STCNT0":')
 
                         jango_df = update_jango_df(data[['종목코드', '새현재가']].copy())
@@ -76,19 +75,17 @@ async def start_kis_receiver():
 
 def jango_db():
     supa_db = kis_db.get_data()
-    col_names = ['주문번호', '종목명', '종목코드', '체결시간', '체결수량', '체결단가', '현재가']
+    col_names = ['주문번호', '종목명', '종목코드', '체결시간', '주문수량', '체결수량', '체결단가', '현재가']
     jango_df = pd.DataFrame(supa_db, columns=col_names)
     return jango_df
 
 async def send_initial_data(websocket):
-    jango_json_data = jango_df.to_dict(orient="records")
+    jango_json_data = strip_zeros(jango_df.to_dict(orient="records"))
     stock_data = {"type": "stock_data", "data": jango_json_data}
     await websocket.send_text(json.dumps(stock_data))
 
 # 숫자 앞 0을 없애주는 함수
 def strip_zeros(json_list: list[dict]) -> list[dict]:
-    # print('strip_zeros 실행')
-    # print('json_list: ', json_list)
     keys_to_strip_zeros = ['주문번호', '체결수량', '체결단가']
     for record in json_list:
         for key in keys_to_strip_zeros:
@@ -100,23 +97,11 @@ def strip_zeros(json_list: list[dict]) -> list[dict]:
     return json_list
 
 def update_jango_df(df: pd.DataFrame = None) -> pd.DataFrame:
-    # print('update_jango_df() 실행')
-    # print('update_jango_df() df')
-    # print(df)
     global jango_df  # 실시간 현재가 데이터 전역변수 사용
     if df is None:
         return jango_df
     else:
-        print('타입비교')
-        print('현재가', jango_df["현재가"])
-        print('새현재가', df["새현재가"])
         jango_df = pd.merge(jango_df, df, on='종목코드', how='left')  # 병합
-        print('타입비교')
-        print('현재가', jango_df["현재가"])
-        print('새현재가', jango_df["새현재가"])
         jango_df.loc[jango_df["새현재가"].notna(), "현재가"] = jango_df["새현재가"]
         jango_df = jango_df.drop(columns=['새현재가'])
-        jango_df = jango_df[['주문번호', '종목명', '종목코드', '체결시간', '주문수량', '체결수량', '체결단가', '현재가']]
-        # print('update_jango_df() jango_df')
-        # print(jango_df)
         return jango_df
