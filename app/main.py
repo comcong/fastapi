@@ -34,7 +34,7 @@ app = FastAPI(lifespan=lifespan)
 
 @app.get("/")
 async def transaction(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    return templates.TemplateResponse("test.html", {"request": request})
 
 
 @app.websocket("/ws")
@@ -43,7 +43,7 @@ async def websocket_endpoint(websocket: WebSocket):
     await kis_receiver.send_initial_data(websocket)
     try:
         while True:
-            await websocket.receive_text()  # 클라이언트 메시지를 무시
+            await websocket.receive_text()
     except:
         websocket_manager.manager.disconnect(websocket)
 
