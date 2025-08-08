@@ -5,8 +5,10 @@ from fastapi.templating import Jinja2Templates
 from fastapi import FastAPI, Request, WebSocket
 import asyncio
 import uvicorn
+import json
 
 import kis_receiver
+from app.kis_invesment.kis_manager import kis
 import websocket_manager
 from app.db import kis_db
 
@@ -48,7 +50,9 @@ async def websocket_endpoint(websocket: WebSocket):
             fws_data = await websocket.receive_text()
             print('fws_data')
             print(fws_data)
-            await websocket.send_text(fws_data)
+            # {"type":"sell_order","data":{"stock_code":"005380","stock_name":"현대차","quantity":"10","current_price":91000}}
+            json_data = json.loads(fws_data)
+            await kis.sell_stock(json_data['data'])
     except:
         websocket_manager.manager.disconnect(websocket)
 

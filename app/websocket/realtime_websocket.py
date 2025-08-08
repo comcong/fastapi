@@ -119,7 +119,7 @@ async def combined_kis_task():
     kis = kis_api()  # kis 객체 생성
 
 
-    async with websockets.connect(kis.url) as ws:  # kis 웹소켓 생성; 최초 한개만 생성해야 한다. 여러개 생성되면 치명적 에러 발생
+    async with websockets.connect(kis.rest_url) as ws:  # kis 웹소켓 생성; 최초 한개만 생성해야 한다. 여러개 생성되면 치명적 에러 발생
         print("KIS 웹소켓에 연결됨")
 
         # ============= 구독 요청 하는 부분 =======================

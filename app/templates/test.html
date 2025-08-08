@@ -133,8 +133,8 @@
 
       // 입력값 정리 및 검증
       const trimmed = input.trim();
-      const chosenPrice = trimmed === '' ? Number(currentPrice) : Number(trimmed.replace(/,/g, ''));
-      if (!Number.isFinite(chosenPrice) || chosenPrice <= 0) {
+      let chosenPrice = trimmed === '' ? Number(currentPrice) : Number(trimmed.replace(/,/g, ''));
+      if (isNaN(chosenPrice) || chosenPrice <= 0) {
         alert('유효한 가격을 입력하세요.');
         return;
       }
@@ -151,7 +151,7 @@
           stock_code: stockCode,
           stock_name: stockName,
           quantity: quantity,
-          current_price: chosenPrice
+          current_price: String(chosenPrice)
         }
       };
       ws.send(JSON.stringify(sellRequest));

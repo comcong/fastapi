@@ -32,11 +32,18 @@ class Settings(BaseSettings):
         case_sensitive = True
 
     @property
-    def url(self) -> str:
+    def ws_url(self) -> str:
         if self.KIS_USE_MOCK:
             return "ws://ops.koreainvestment.com:31000"
         else:
             return "ws://ops.koreainvestment.com:21000"
+
+    @property
+    def rest_url(self) -> str:
+        if self.KIS_USE_MOCK:
+            return "https://openapivts.koreainvestment.com:29443"
+        else:
+            return "https://openapi.koreainvestment.com:9443"
 
     @property
     def tr_id_transaction(self) -> str:
@@ -44,5 +51,20 @@ class Settings(BaseSettings):
             return "H0STCNI9"
         else:
             return "H0STCNI0"
+
+    @property
+    def tr_id_sell_order(self) -> str:
+        if self.KIS_USE_MOCK:
+            return "VTTC0011U"
+        else:
+            return "TTTC0011U"
+
+    @property
+    def tr_id_buy_order(self) -> str:
+        if self.KIS_USE_MOCK:
+            return "VTTC0012U"
+        else:
+            return "TTTC0012U"
+
 
 settings = Settings()

@@ -4,20 +4,21 @@ from Crypto.Util.Padding import unpad
 from base64 import b64decode
 import pandas as pd
 from datetime import datetime
+import requests
 
 from app.services import kis_auth
 from app.core.config import settings
 
 class kis_api:
     def __init__(self):
-        self.__approval_key = kis_auth.get_approval_key()
+        # self.__approval_key = kis_auth.get_approval_key()
         self.__access_token = kis_auth.get_access_token()
-        self.__HTS_ID = settings.KIS_HTS_ID
+        # self.__HTS_ID = settings.KIS_HTS_ID
         self.__iv = None
         self.__key = None
         self.__price_menulist = '종목코드|체결시간|새현재가|전일대비부호|전일대비|전일대비율|가중평균주식가격|시가|최고가|최저가|매도호가1|매수호가1|체결거래량|누적거래량|누적거래대금|매도체결건수|매수체결건수|순매수체결건수|체결강도|총매도수량|총매수수량|체결구분|매수비율|전일거래량대비등락율|시가시간|시가대비구분|시가대비|최고가시간|고가대비구분|고가대비|최저가시간|저가대비구분|저가대비|영업일자|신장운영구분코드|거래정지여부|매도호가잔량|매수호가잔량|총매도호가잔량|총매수호가잔량|거래량회전율|전일동시간누적거래량|전일동시간누적거래량비율|시간구분코드|임의종료구분코드|정적VI발동기준가'
         self.__trans_menulist = '고객ID|계좌번호|주문번호|원주문번호|매도매수구분|정정구분|주문종류|주문조건|종목코드|체결수량|체결단가|체결시간|거부여부|체결여부|접수여부|지점번호|주문수량|계좌명|호가조건가격|주문거래소구분|실시간체결창표시여부|종목명|필러'
-        self.url = settings.url
+        # self.rest_url = settings.rest_url
 
 
     # ============================================================= #
@@ -214,7 +215,7 @@ class kis_api:
 
     async def subscribe(self, ws, tr_id=settings.tr_id_transaction, tr_type='1', code_list=None):
         if tr_id in ['H0STCNI0', 'H0STCNI9']:                                               # 실시간 체결알람 tr_id
-            senddata = self.__req_data(tr_id=tr_id, tr_key=self.__HTS_ID, tr_type=tr_type)  # ws 에 전송할 데이터 포맷
+            senddata = self.__req_data(tr_id=tr_id, tr_key=settings.KIS_HTS_ID, tr_type=tr_type)  # ws 에 전송할 데이터 포맷
             await ws.send(json.dumps(senddata))                                             # 실시간 체결알람 한투api에 구독 등록 요청
             print('실시간 체결알람 등록 데이터 전송', senddata)
 
@@ -230,7 +231,7 @@ class kis_api:
         # 요청 데이터 구성
         senddata = {
             "header": {
-                "approval_key": self.__approval_key,
+                "approval_key": kis_auth.get_approval_key(),
                 "custtype": "P",
                 "tr_type": tr_type,
                 "content-type": "utf-8"
@@ -244,24 +245,47 @@ class kis_api:
         }
         return senddata
 
-    # 상수 정의
-    API_URL = "/uapi/domestic-stock/v1/trading/order-cash"
+    async def sell_stock(self, json_data):
+        print('sell_stock 실행')
+        try:
+            # {"type":"sell_order","data":{"stock_code":"005380","stock_name":"현대차","quantity":"10","current_price":91000}}
+            url = f"{settings.rest_url}/uapi/domestic-stock/v1/trading/order-cash"
+            code = json_data['stock_code']
+            order_type = '00'
+            qty = json_data['quantity']
+            price = json_data['current_price']
 
-    def order_cash(
-            self,
-            env_dv: str,  # 실전모의구분 (real:실전, demo:모의)
-            ord_dv: str,  # 매도매수구분 (buy:매수, sell:매도)
-            cano: str,  # 종합계좌번호
-            acnt_prdt_cd: str,  # 계좌상품코드
-            pdno: str,  # 상품번호 (종목코드)
-            ord_dvsn: str,  # 주문구분
-            ord_qty: str,  # 주문수량
-            ord_unpr: str,  # 주문단가
-            excg_id_dvsn_cd: str,  # 거래소ID구분코드
-            sll_type: str = "",  # 매도유형 (매도주문 시)
-            cndt_pric: str = ""  # 조건가격
-    ) -> pd.DataFrame:
-        pass
+            headers = {
+                "Content-Type": "application/json",
+                "authorization": f"Bearer {kis_auth.get_access_token()}",
+                "appkey": settings.KIS_APPKEY,
+                "appsecret": settings.KIS_APPSECRET,
+                "tr_id": settings.tr_id_sell_order,
+                "custtype": "P"
+            }
+
+            body = {
+                "CANO": settings.KIS_CANO,  # 계좌번호 앞 8자리
+                "ACNT_PRDT_CD": settings.KIS_ACNT_PRDT_CD,  # 계좌상품코드(뒤 2자리)
+                "PDNO": code,                                # 종목코드
+                "ORD_DVSN": order_type,                      # 00: 지정가, 03: 시장가
+                "ORD_QTY": qty,                              # 수량
+                "ORD_UNPR": price,                           # 주문단가 (시장가면 '0')
+            }
+
+            res = requests.post(url, headers=headers, data=json.dumps(body))
+            res_data = res.json()
+
+            if res.status_code == 200 and res_data.get("rt_cd") == "0":
+                print(f"[매도 주문 성공] {code} {qty}주 @ {price}원")
+            else:
+                print(f"[매도 주문 실패] {res_data}")
+
+            return res_data
+
+        except Exception as e:
+            print("[매도 주문 오류]", e)
+            return None
 
 
 

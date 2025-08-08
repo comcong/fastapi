@@ -12,7 +12,7 @@ async def combined_kis_task():
     prev_code_set = set(code_list)  # 최초 구독 코드
     first_run = True                # 최초 1회는 기존 코드 사용
 
-    async with websockets.connect(kis.url) as ws:
+    async with websockets.connect(kis.rest_url) as ws:
         print("KIS 웹소켓에 연결됨")
 
         # 최초 구독 요청

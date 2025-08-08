@@ -6,6 +6,7 @@ import websockets
 import traceback
 
 import websocket_manager
+from app.core.config import settings
 from app.db import kis_db
 from app.kis_invesment.kis_manager import kis
 
@@ -17,7 +18,7 @@ async def start_kis_receiver():
     jango_df = jango_db()
     # 체결시간_포맷()
     code_list = jango_df['종목코드'].unique().tolist() # DB 에서 종목코드 가져옴
-    async with websockets.connect(kis.url) as ws:
+    async with websockets.connect(settings.ws_url) as ws:
         await kis.subscribe(ws=ws)
         await kis.subscribe(ws=ws, tr_id='H0STCNT0', code_list=code_list)
 
