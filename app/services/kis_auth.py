@@ -52,7 +52,7 @@ class KISAuthService:
                 "request_data": {
                     "grant_type": "client_credentials",
                     "appkey": settings.KIS_APPKEY,
-                    "secretkey": settings.KIS_APPSECRET
+                    "appsecret": settings.KIS_APPSECRET
                 },
                 "response_key": "approval_key",
                 "use_headers": True,  # approval_key는 headers에도 데이터 전달 필요
@@ -146,7 +146,14 @@ class KISAuthService:
                 elif settings.KIS_USE_MOCK == False:
                     base_url = "https://apivts.koreainvestment.com:9443"
 
-                url = f"{base_url}/oauth2/Approval"
+                # auth_type에 따라 엔드포인트 분기
+                if auth_type == AuthType.ACCESS_TOKEN:
+                    url = f"{base_url}/oauth2/tokenP"
+
+                else:
+                    url = f"{base_url}/oauth2/Approval"
+
+
                 data = config["request_data"]
 
                 # approval_key는 headers에도 데이터를 전달해야 함
