@@ -11,7 +11,7 @@ from app.core.config import settings
 class kis_api:
     def __init__(self):
         self.__approval_key = kis_auth.get_approval_key()
-        # self.__access_token = kis_auth.get_access_token()
+        self.__access_token = kis_auth.get_access_token()
         self.__HTS_ID = settings.KIS_HTS_ID
         self.__iv = None
         self.__key = None
