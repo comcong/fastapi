@@ -1,17 +1,17 @@
 import json
-from app.services.kis_auth import get_approval_key
-from app.core.config import settings
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
 from base64 import b64decode
-import asyncio
-from app.db import kis_db
 import pandas as pd
 from datetime import datetime
 
+from app.services import kis_auth
+from app.core.config import settings
+
 class kis_api:
     def __init__(self):
-        self.__approval_key = get_approval_key()
+        self.__approval_key = kis_auth.get_approval_key()
+        # self.__access_token = kis_auth.get_access_token()
         self.__HTS_ID = settings.KIS_HTS_ID
         self.__iv = None
         self.__key = None
@@ -246,6 +246,45 @@ class kis_api:
             }
         }
         return senddata
+
+    # 상수 정의
+    API_URL = "/uapi/domestic-stock/v1/trading/order-cash"
+
+    def order_cash(
+            self,
+            env_dv: str,  # 실전모의구분 (real:실전, demo:모의)
+            ord_dv: str,  # 매도매수구분 (buy:매수, sell:매도)
+            cano: str,  # 종합계좌번호
+            acnt_prdt_cd: str,  # 계좌상품코드
+            pdno: str,  # 상품번호 (종목코드)
+            ord_dvsn: str,  # 주문구분
+            ord_qty: str,  # 주문수량
+            ord_unpr: str,  # 주문단가
+            excg_id_dvsn_cd: str,  # 거래소ID구분코드
+            sll_type: str = "",  # 매도유형 (매도주문 시)
+            cndt_pric: str = ""  # 조건가격
+    ) -> pd.DataFrame:
+        pass
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 kis = kis_api()
 
