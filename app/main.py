@@ -28,6 +28,8 @@ async def lifespan(app: FastAPI):
     except asyncio.CancelledError:
         pass
     kis_db.delete_data()
+    print("앱 종료전 kis_receiver.jango_df")
+    print(kis_receiver.jango_df.columns)
     kis_db.insert_data(kis_receiver.jango_df.to_dict(orient="records"))
 
 app = FastAPI(lifespan=lifespan)
@@ -43,7 +45,10 @@ async def websocket_endpoint(websocket: WebSocket):
     await kis_receiver.send_initial_data(websocket)
     try:
         while True:
-            await websocket.receive_text()
+            fws_data = await websocket.receive_text()
+            print('fws_data')
+            print(fws_data)
+            await websocket.send_text(fws_data)
     except:
         websocket_manager.manager.disconnect(websocket)
 

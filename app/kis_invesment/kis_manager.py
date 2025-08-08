@@ -7,6 +7,7 @@ from base64 import b64decode
 import asyncio
 from app.db import kis_db
 import pandas as pd
+from datetime import datetime
 
 class kis_api:
     def __init__(self):
@@ -61,20 +62,6 @@ class kis_api:
                 df = pd.DataFrame([data])
                 # print('추적3', df)
                 return df  # 완성된 현재가 데이터 df 로 리턴
-
-                # # ======== 매수 체결시  df, DB 에 데이터 넣는 자리 ==============
-                # if data['매도매수구분'] == '02':  # 01: 매도, 02: 매수     ==== 매수
-                #     print('추적3')
-                #     self.buy_update(data)  # df, DB 데이터 업데이트  === 매수한 만큼 삽입
-                #
-                # # ======== 매도 체결시  df, DB 에 데이터 빼는 자리 ==============
-                # elif data['매도매수구분'] == '01':  # 01: 매도, 02: 매수  ==== 매도
-                #     print('추적4')
-                #     self.sell_update(data)
-                #     # self.__df = self.__df.loc[self.__df['주문번호'] != data['주문번호']]  # 매도한 만큼 삭제
-                #     # kis_db.delete_data(data['주문번호'])   # 매도한 주문번호 행 supabase DB 에서 삭제
-                # print(self.__df)
-                # return data  # 완성된 체결통보 데이터 df 로 리턴
 
 
             elif extracted_data['tr_id'] == 'H0STCNT0':    # 실시간 현재가  H0STCNT0
@@ -131,9 +118,23 @@ class kis_api:
             jango_df.at[idx, '체결수량'] = str(기존_수량 + 신규_수량)
 
             # 체결단가는 최신값으로 갱신
-            jango_df.at[idx, '체결단가'] = trans_df['체결단가'].values[0]
-            jango_df.at[idx, '체결시간'] = trans_df['체결시간'].values[0]
+            기존_체결단가 = int(jango_df.at[idx, '체결단가'])
+            print('기존_체결단가: ', 기존_체결단가)
+            신규_체결단가 = int(trans_df['체결단가'].values[0])
+            print('신규_체결단가: ', 신규_체결단가)
+            평균_체결단가 = (기존_수량 * 기존_체결단가 + 신규_수량 * 신규_체결단가) / (기존_수량 + 신규_수량)
+            평균_체결단가 = round(평균_체결단가)
+            print('평균_체결단가')
+            print(평균_체결단가)
 
+
+            # jango_df.at[idx, '체결단가'] = trans_df['체결단가'].values[0]
+            jango_df.at[idx, '체결단가'] = 평균_체결단가
+
+            yymmdd = datetime.now().strftime("%y%m%d")
+            체결시간 = yymmdd + trans_df['체결시간'].values[0]
+            # jango_df.at[idx, '체결시간'] = trans_df['체결시간'].values[0]
+            jango_df.at[idx, '체결시간'] = 체결시간
             print('buy_update() 기존 주문이 있는 경우 실행 완료')
             return jango_df
 
