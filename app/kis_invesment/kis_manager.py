@@ -53,7 +53,7 @@ class kis_api:
                 # print('value 개수: ', len(data_values))
                 data = dict(zip(data_keys, data_values))  # zip으로 묶어서 딕셔너리 형태로 변환
                 data['tr_id'] = extracted_data['tr_id']   # data 에 tr_id 값 추가; 데이터 종류 구분하기 위해
-                df = pd.DataFrame([data])
+                df = pd.DataFrame([data]).sort_values('체결시간')
                 # print('추적3', df)
                 return df  # 완성된 현재가 데이터 df 로 리턴
 
@@ -65,7 +65,7 @@ class kis_api:
                 data_values = data.split('^')
                 data = dict(zip(data_keys, data_values))  # zip으로 묶어서 딕셔너리 형태로 변환
                 data['tr_id'] = extracted_data['tr_id']   # data 에 tr_id 값 추가; 데이터 종류 구분하기 위해
-                df = pd.DataFrame([data])
+                df = pd.DataFrame([data]).sort_values('체결시간')
                 # print('추적10', df)
                 return df   # 완성된 현재가 데이터 df 로 리턴
 

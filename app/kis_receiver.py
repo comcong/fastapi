@@ -79,7 +79,7 @@ async def start_kis_receiver():
 
 def jango_db():
     supa_db = kis_db.get_data()
-    jango_df = pd.DataFrame(supa_db, columns=col_names)
+    jango_df = pd.DataFrame(supa_db, columns=col_names).sort_values('체결시간')
     return jango_df
 
 async def send_initial_data(websocket):
