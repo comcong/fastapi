@@ -52,7 +52,7 @@ class KISAuthService:
                 "request_data": {
                     "grant_type": "client_credentials",
                     "appkey": settings.KIS_APPKEY,
-                    "appsecret": settings.KIS_APPSECRET
+                    "secretkey": settings.KIS_APPSECRET
                 },
                 "response_key": "approval_key",
                 "use_headers": True,  # approval_key는 headers에도 데이터 전달 필요
