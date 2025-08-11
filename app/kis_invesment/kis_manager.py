@@ -15,7 +15,7 @@ class kis_api:
         self.__key = None
         self.__price_menulist = '종목코드|체결시간|새현재가|전일대비부호|전일대비|전일대비율|가중평균주식가격|시가|최고가|최저가|매도호가1|매수호가1|체결거래량|누적거래량|누적거래대금|매도체결건수|매수체결건수|순매수체결건수|체결강도|총매도수량|총매수수량|체결구분|매수비율|전일거래량대비등락율|시가시간|시가대비구분|시가대비|최고가시간|고가대비구분|고가대비|최저가시간|저가대비구분|저가대비|영업일자|신장운영구분코드|거래정지여부|매도호가잔량|매수호가잔량|총매도호가잔량|총매수호가잔량|거래량회전율|전일동시간누적거래량|전일동시간누적거래량비율|시간구분코드|임의종료구분코드|정적VI발동기준가'
         self.__trans_menulist = '고객ID|계좌번호|주문번호|원주문번호|매도매수구분|정정구분|주문종류|주문조건|종목코드|체결수량|체결단가|체결시간|거부여부|체결여부|접수여부|지점번호|주문수량|계좌명|호가조건가격|주문거래소구분|실시간체결창표시여부|종목명|필러'
-
+        self.__sell_to_buy_order_map = {}
 
     # ============================================================= #
     # ================== 데이터 가공하는 부분 ======================== #
@@ -134,6 +134,10 @@ class kis_api:
 
         else:  # 새로운 주문번호라면, 새로운 행에 추가
             print('주문번호가 없는 경우')
+            yymmdd = datetime.now().strftime("%y%m%d")
+            체결시간 = yymmdd + trans_df['체결시간'].values[0]
+            trans_df['체결시간'] = 체결시간
+
             tr_id = 'H0STCNT0'
             tran_code = trans_df['종목코드'].values[0]
             code_list = jango_df['종목코드'].unique().tolist()
@@ -159,31 +163,27 @@ class kis_api:
 
             # 수량 차감 (int로 변환 주의)
             기존_수량 = int(jango_df.at[idx, '체결수량'])
+            print('기존수량', 기존_수량)
             매도_수량 = int(trans_df['체결수량'])
-            # 새로운_수량 = max(0, 기존_수량 - 매도_수량)  # 음수 방지
-            새로운_수량 = (기존_수량 - 매도_수량)  # 음수 방지
+            print('매도_수량', 매도_수량)
+            새로운_수량 = (기존_수량 - 매도_수량)
+            print('새로운_수량', 새로운_수량)
 
             jango_df.at[idx, '체결수량'] = str(새로운_수량)
             jango_df.at[idx, '체결단가'] = trans_df['체결단가']
             jango_df.at[idx, '체결시간'] = trans_df['체결시간']
 
             if 새로운_수량 == 0:         # 수량이 모두 없어지면 행 제거
+                print('새로운_수량 == 0')
                 jango_df.drop(index=idx, inplace=True)
-                # kis_db.delete_data(주문번호)
                 return jango_df
 
             else:
-                # # 수량이 0이 아닐 때만 DB 업데이트
-                # kis_db.update_data(주문번호, {
-                #     '체결수량': str(새로운_수량),
-                #     '체결단가': data['체결단가'],
-                #     '체결시간': data['체결시간']
-                # })
                 return jango_df
 
         else:
             print(f"주문번호 {ord_num} 가 없는 매도가 체결되었습니다. 체결 데이터 확인 필요!!")
-
+            return jango_df
 
 
     # AES256 DECODE
@@ -244,7 +244,8 @@ class kis_api:
     async def sell_stock(self, json_data):
         print('sell_stock 실행')
         try:
-            # {"type":"sell_order","data":{"stock_code":"005380","stock_name":"현대차","quantity":"10","current_price":91000}}
+            # {"order_number":"3444","stock_code":"233740","stock_name":"KODEX 코스닥150레버리지","quantity":"1","current_price":"9065"}
+            buy_order_no = json_data.get("order_number")
             url = f"{settings.rest_url}/uapi/domestic-stock/v1/trading/order-cash"
             code = json_data['stock_code']
             order_type = '00'
@@ -274,6 +275,11 @@ class kis_api:
 
             if res.status_code == 200 and res_data.get("rt_cd") == "0":
                 print(f"[매도 주문 성공] {code} {qty}주 @ {price}원")
+                output = res_data.get("output", [{}])[0]
+                sell_order_no = output.get("ODNO")  # 매도 주문번호 받아오기
+                # 매도 주문번호 ↔ 매수 주문번호 맵핑 저장
+                self.__sell_to_buy_order_map[sell_order_no] = buy_order_no
+
             else:
                 print(f"[매도 주문 실패] {res_data}")
 

@@ -51,7 +51,7 @@ async def websocket_endpoint(websocket: WebSocket):
             fws_data = await websocket.receive_text()
             print('fws_data')
             print(fws_data)
-            # {"type":"sell_order","data":{"stock_code":"005380","stock_name":"현대차","quantity":"10","current_price":91000}}
+            # {"type":"sell_order","data":{"order_number":"3444","stock_code":"233740","stock_name":"KODEX 코스닥150레버리지","quantity":"1","current_price":"9065"}}
             json_data = json.loads(fws_data)
             await kis.sell_stock(json_data['data'])
     except:
