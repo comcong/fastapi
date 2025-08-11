@@ -154,12 +154,12 @@ class kis_api:
     def sell_update(self, jango_df, trans_df):
         print('sell_update() 실행')
         print(trans_df)
-        ord_num = trans_df['주문번호'].values[0]
-
+        sell_ord_num = trans_df['주문번호'].values[0]
+        buy_ord_num = self.__sell_to_buy_order_map[sell_ord_num]
         # 주문번호가 이미 존재하는지 확인
-        if ord_num in jango_df['주문번호'].values:
+        if buy_ord_num in jango_df['주문번호'].values:
 
-            idx = jango_df[jango_df['주문번호'] == ord_num].index[0] # 기존 주문번호가 있는 행번호 가져오기
+            idx = jango_df[jango_df['주문번호'] == buy_ord_num].index[0] # 기존 주문번호가 있는 행번호 가져오기
 
             # 수량 차감 (int로 변환 주의)
             기존_수량 = int(jango_df.at[idx, '체결수량'])
@@ -170,8 +170,6 @@ class kis_api:
             print('새로운_수량', 새로운_수량)
 
             jango_df.at[idx, '체결수량'] = str(새로운_수량)
-            jango_df.at[idx, '체결단가'] = trans_df['체결단가']
-            jango_df.at[idx, '체결시간'] = trans_df['체결시간']
 
             if 새로운_수량 == 0:         # 수량이 모두 없어지면 행 제거
                 print('새로운_수량 == 0')
@@ -182,7 +180,7 @@ class kis_api:
                 return jango_df
 
         else:
-            print(f"주문번호 {ord_num} 가 없는 매도가 체결되었습니다. 체결 데이터 확인 필요!!")
+            print(f"주문번호 {buy_ord_num} 가 없는 매도가 체결되었습니다. 체결 데이터 확인 필요!!")
             return jango_df
 
 
@@ -270,15 +268,13 @@ class kis_api:
                 "ORD_UNPR": price,                           # 주문단가 (시장가면 '0')
             }
 
-            res = requests.post(url, headers=headers, data=json.dumps(body))
-            res_data = res.json()
+            res_data = requests.post(url, headers=headers, data=json.dumps(body)).json()
 
-            if res.status_code == 200 and res_data.get("rt_cd") == "0":
+            if res_data.get("rt_cd") == "0":
                 print(f"[매도 주문 성공] {code} {qty}주 @ {price}원")
-                output = res_data.get("output", [{}])[0]
+                output = res_data.get("output")
                 sell_order_no = output.get("ODNO")  # 매도 주문번호 받아오기
-                # 매도 주문번호 ↔ 매수 주문번호 맵핑 저장
-                self.__sell_to_buy_order_map[sell_order_no] = buy_order_no
+                self.__sell_to_buy_order_map[sell_order_no] = buy_order_no  # {매도주문번호 : 매수주문번호} 맵핑
 
             else:
                 print(f"[매도 주문 실패] {res_data}")
