@@ -11,7 +11,7 @@ from app.db import kis_db
 from app.kis_invesment.kis_manager import kis
 
 jango_df: pd.DataFrame = pd.DataFrame()
-col_names = ['주문번호', '종목명', '종목코드', '체결시간', '주문수량', '체결수량', '체결단가', '현재가', '수익률']
+col_names = ['매수_주문번호', '종목명', '종목코드', '체결시간', '주문수량', '체결수량', '체결단가', '현재가', '수익률', '매도_주문번호']
 
 async def start_kis_receiver():
     global jango_df
@@ -54,8 +54,7 @@ async def start_kis_receiver():
 
                         elif trans_df['매도매수구분'].values[0] == '01':    # 01: 매도, 02: 매수
                             jango_df = kis.sell_update(jango_df=jango_df, trans_df=trans_df)
-                        jango_df = jango_df[col_names]
-
+                        jango_df = jango_df[col_names].sort_values(by='매수_주문번호')
                         json_data = strip_zeros(jango_df.to_dict(orient="records"))
                         print('json_data', json_data)
                         data = {"type": "stock_data", "data": json_data}
@@ -91,7 +90,7 @@ async def send_initial_data(websocket):
 
 # 숫자 앞 0을 없애주는 함수
 def strip_zeros(json_list: list[dict]) -> list[dict]:
-    keys_to_strip_zeros = ['주문번호', '주문수량', '체결수량', '체결단가']
+    keys_to_strip_zeros = ['매수_주문번호', '주문수량', '체결수량', '체결단가', '매도주문번호']
     for record in json_list:
         for key in keys_to_strip_zeros:
             if key in record and record[key]:

@@ -53,7 +53,13 @@ async def websocket_endpoint(websocket: WebSocket):
             print(fws_data)
             # {"type":"sell_order","data":{"order_number":"3444","stock_code":"233740","stock_name":"KODEX 코스닥150레버리지","quantity":"1","current_price":"9065"}}
             json_data = json.loads(fws_data)
-            await kis.sell_stock(json_data['data'])
+            sell_order_no = await kis.sell_stock(json_data['data'])
+            # 매도주문번호 넣기
+            if sell_order_no:
+                kis_receiver.jango_df.loc[kis_receiver.jango_df['매수_주문번호'] == json_data['data']['order_number'], '매도_주문번호'] = sell_order_no
+                data = {"type": "sell_number", "data": sell_order_no}
+                await websocket_manager.manager.broadcast(json.dumps(data))
+
     except:
         websocket_manager.manager.disconnect(websocket)
 

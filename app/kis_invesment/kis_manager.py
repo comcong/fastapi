@@ -14,7 +14,8 @@ class kis_api:
         self.__iv = None
         self.__key = None
         self.__price_menulist = '종목코드|체결시간|새현재가|전일대비부호|전일대비|전일대비율|가중평균주식가격|시가|최고가|최저가|매도호가1|매수호가1|체결거래량|누적거래량|누적거래대금|매도체결건수|매수체결건수|순매수체결건수|체결강도|총매도수량|총매수수량|체결구분|매수비율|전일거래량대비등락율|시가시간|시가대비구분|시가대비|최고가시간|고가대비구분|고가대비|최저가시간|저가대비구분|저가대비|영업일자|신장운영구분코드|거래정지여부|매도호가잔량|매수호가잔량|총매도호가잔량|총매수호가잔량|거래량회전율|전일동시간누적거래량|전일동시간누적거래량비율|시간구분코드|임의종료구분코드|정적VI발동기준가'
-        self.__trans_menulist = '고객ID|계좌번호|주문번호|원주문번호|매도매수구분|정정구분|주문종류|주문조건|종목코드|체결수량|체결단가|체결시간|거부여부|체결여부|접수여부|지점번호|주문수량|계좌명|호가조건가격|주문거래소구분|실시간체결창표시여부|종목명|필러'
+        self.__trans_menulist = '고객ID|계좌번호|매수_주문번호|원주문번호|매도매수구분|정정구분|주문종류|주문조건|종목코드|체결수량|체결단가|체결시간|거부여부|체결여부|접수여부|지점번호|주문수량|계좌명|호가조건가격|주문거래소구분|실시간체결창표시여부|종목명|필러'
+        self.__yymmdd = datetime.now().strftime("%y%m%d")
         self.__sell_to_buy_order_map = {}
 
     # ============================================================= #
@@ -52,10 +53,8 @@ class kis_api:
                 # print('data_values', data_values)
                 # print('value 개수: ', len(data_values))
                 data = dict(zip(data_keys, data_values))  # zip으로 묶어서 딕셔너리 형태로 변환
-                data['tr_id'] = extracted_data['tr_id']   # data 에 tr_id 값 추가; 데이터 종류 구분하기 위해
-                df = pd.DataFrame([data]).sort_values('체결시간')
-                # print('추적3', df)
-                return df  # 완성된 현재가 데이터 df 로 리턴
+                data['매수_주문번호'] = self.__yymmdd + str(int(data['주문번호']))
+
 
 
             elif extracted_data['tr_id'] == 'H0STCNT0':    # 실시간 현재가  H0STCNT0
@@ -64,10 +63,11 @@ class kis_api:
                 data_keys = self.__price_menulist.split('|')
                 data_values = data.split('^')
                 data = dict(zip(data_keys, data_values))  # zip으로 묶어서 딕셔너리 형태로 변환
-                data['tr_id'] = extracted_data['tr_id']   # data 에 tr_id 값 추가; 데이터 종류 구분하기 위해
-                df = pd.DataFrame([data]).sort_values('체결시간')
-                # print('추적10', df)
-                return df   # 완성된 현재가 데이터 df 로 리턴
+
+            data['tr_id'] = extracted_data['tr_id']  # data 에 tr_id 값 추가; 데이터 종류 구분하기 위해
+            df = pd.DataFrame([data])
+            return df
+
 
         except:                                                   # 딕셔너리 형태의 문자열인 경우
             data = json.loads(row_data)
@@ -121,21 +121,15 @@ class kis_api:
             print('평균_체결단가')
             print(평균_체결단가)
 
-
-            # jango_df.at[idx, '체결단가'] = trans_df['체결단가'].values[0]
             jango_df.at[idx, '체결단가'] = 평균_체결단가
-
-            yymmdd = datetime.now().strftime("%y%m%d")
-            체결시간 = yymmdd + trans_df['체결시간'].values[0]
-            # jango_df.at[idx, '체결시간'] = trans_df['체결시간'].values[0]
+            체결시간 = self.__yymmdd + trans_df['체결시간'].values[0]
             jango_df.at[idx, '체결시간'] = 체결시간
             print('buy_update() 기존 주문이 있는 경우 실행 완료')
             return jango_df
 
         else:  # 새로운 주문번호라면, 새로운 행에 추가
             print('주문번호가 없는 경우')
-            yymmdd = datetime.now().strftime("%y%m%d")
-            체결시간 = yymmdd + trans_df['체결시간'].values[0]
+            체결시간 = self.__yymmdd + trans_df['체결시간'].values[0]
             trans_df['체결시간'] = 체결시간
 
             tr_id = 'H0STCNT0'
@@ -275,35 +269,16 @@ class kis_api:
                 output = res_data.get("output")
                 sell_order_no = output.get("ODNO")  # 매도 주문번호 받아오기
                 self.__sell_to_buy_order_map[sell_order_no] = buy_order_no  # {매도주문번호 : 매수주문번호} 맵핑
+                return sell_order_no
 
             else:
                 print(f"[매도 주문 실패] {res_data}")
 
-            return res_data
+
 
         except Exception as e:
             print("[매도 주문 오류]", e)
             return None
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 kis = kis_api()
 
