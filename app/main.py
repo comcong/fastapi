@@ -57,7 +57,10 @@ async def websocket_endpoint(websocket: WebSocket):
             # 매도주문번호 넣기
             if sell_order_no:
                 kis_receiver.jango_df.loc[kis_receiver.jango_df['매수_주문번호'] == json_data['data']['order_number'], '매도_주문번호'] = sell_order_no
-                data = {"type": "sell_number", "data": sell_order_no}
+                # data = {"type": "sell_number", "data": sell_order_no}
+                # await websocket_manager.manager.broadcast(json.dumps(data))
+                json_data = kis_receiver.jango_df.to_dict(orient="records")
+                data = {"type": "stock_data", "data": json_data}
                 await websocket_manager.manager.broadcast(json.dumps(data))
 
     except:
