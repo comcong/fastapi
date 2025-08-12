@@ -12,7 +12,7 @@ from app.db import kis_db
 from app.kis_invesment.kis_manager import kis
 
 jango_df: pd.DataFrame = pd.DataFrame()
-col_names = ['매수_주문번호', '종목명', '종목코드', '체결시간', '주문수량', '체결수량', '체결단가', '현재가', '수익률', '매도_주문번호']
+col_names = ['매수_주문번호', '종목명', '종목코드', '체결시간', '주문수량', '체결수량', '체결단가', '현재가', '수익률', '매도_주문가격', '매도_주문번호']
 
 async def start_kis_receiver():
     global jango_df
@@ -39,8 +39,8 @@ async def start_kis_receiver():
 
                         jango_df = update_jango_df(data[['종목코드', '새현재가']].copy())
                         jango_df = jango_df[col_names]
-                        cols = ['주문수량', '체결수량', '체결단가']
-                        jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0')) #.replace('', '0'))
+                        cols = ['주문수량', '체결수량', '체결단가', '매도_주문가격']
+                        jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0'))
                         json_data = jango_df.to_dict(orient="records")
                         data = {"type": "stock_data", "data": json_data}
                         print('json_data', data)
@@ -59,8 +59,8 @@ async def start_kis_receiver():
                         print(jango_df)
                         print(jango_df.columns)
                         jango_df = jango_df[col_names].sort_values(by='매수_주문번호').fillna('')
-                        cols = ['주문수량', '체결수량', '체결단가']
-                        jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0')) #.replace('', '0'))
+                        cols = ['주문수량', '체결수량', '체결단가', '매도_주문가격']
+                        jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0'))
                         json_data = jango_df.to_dict(orient="records")
                         data = {"type": "stock_data", "data": json_data}
                         print('json_data', data)
@@ -97,7 +97,7 @@ async def send_initial_data(websocket):
 
 # 숫자 앞 0을 없애주는 함수
 def strip_zeros(json_list: list[dict]) -> list[dict]:
-    keys_to_strip_zeros = ['매수_주문번호', '주문수량', '체결수량', '체결단가', '매도_주문번호']
+    keys_to_strip_zeros = ['주문수량', '체결수량', '체결단가', '매도_주문가격']
     for record in json_list:
         for key in keys_to_strip_zeros:
             if key in record and record[key]:

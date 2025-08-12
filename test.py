@@ -1,2 +1,5 @@
-for i in [1]:
-    print(i)
+def fgg():
+    print('테스트')
+
+a = fgg()
+print(a)

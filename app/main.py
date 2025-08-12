@@ -53,18 +53,17 @@ async def websocket_endpoint(websocket: WebSocket):
             print(fws_data)
             # {"type":"sell_order","data":{"order_number":"3444","stock_code":"233740","stock_name":"KODEX 코스닥150레버리지","quantity":"1","current_price":"9065"}}
             json_data = json.loads(fws_data)
-            sell_order_no = await kis.sell_stock(json_data['data'])
-            # 매도주문번호 넣기
-            if sell_order_no:
-                kis_receiver.jango_df.loc[kis_receiver.jango_df['매수_주문번호'] == json_data['data']['order_number'], '매도_주문번호'] = sell_order_no
-                # data = {"type": "sell_number", "data": sell_order_no}
-                # await websocket_manager.manager.broadcast(json.dumps(data))
+            res = await kis.sell_stock(json_data['data'])
+            if res:
+                sell_order_no, sell_order_price = res
+                print("매도 주문 응답 정상", sell_order_no, sell_order_price)
+                kis_receiver.jango_df.loc[kis_receiver.jango_df['매수_주문번호'] == json_data['data']['order_number'], ['매도_주문번호', '매도_주문가격']] = (sell_order_no, sell_order_price)
                 json_data = kis_receiver.jango_df.to_dict(orient="records")
                 data = {"type": "stock_data", "data": json_data}
                 await websocket_manager.manager.broadcast(json.dumps(data))
 
-    except:
-        websocket_manager.manager.disconnect(websocket)
+    except Exception as e:
+        print(["[main.py - 1 오류]"], e)
 
 
 if __name__ == "__main__":

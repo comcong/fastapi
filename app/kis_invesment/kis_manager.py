@@ -270,7 +270,7 @@ class kis_api:
                 output = res_data.get("output")
                 sell_order_no =  output.get("ODNO")  # 매도 주문번호 받아오기
                 self.__sell_to_buy_order_map[sell_order_no] = buy_order_no  # {매도주문번호 : 매수주문번호} 맵핑
-                return sell_order_no
+                return [sell_order_no, price]
 
             else:
                 print(f"[매도 주문 실패] {res_data}")
