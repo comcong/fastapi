@@ -11,12 +11,13 @@ import kis_receiver
 from app.kis_invesment.kis_manager import kis
 import websocket_manager
 from app.db import kis_db
+from app.kis_invesment import account_balance
 
 # templates 경로 설정
 PROJECT_ROOT = Path(__file__).parent.parent
 TEMPLATES_DIR = PROJECT_ROOT / "app/templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-
+d2_cash = account_balance.get_balance()
 
 
 @asynccontextmanager
@@ -39,6 +40,7 @@ app = FastAPI(lifespan=lifespan)
 
 @app.get("/")
 async def transaction(request: Request):
+    print('d2_cash', d2_cash)
     return templates.TemplateResponse("test.html", {"request": request})
 
 
@@ -64,7 +66,9 @@ async def websocket_endpoint(websocket: WebSocket):
 
     except Exception as e:
         print(["[main.py - 1 오류]"], e)
-
+    finally:
+        # 연결 정리
+        websocket_manager.manager.disconnect(websocket)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
