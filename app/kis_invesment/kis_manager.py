@@ -53,7 +53,7 @@ class kis_api:
                 # print('data_values', data_values)
                 # print('value 개수: ', len(data_values))
                 data = dict(zip(data_keys, data_values))  # zip으로 묶어서 딕셔너리 형태로 변환
-                data['매수_주문번호'] = self.__yymmdd + str(int(data['주문번호']))
+                data['매수_주문번호'] = self.__yymmdd + data['주문번호']
 
 
 

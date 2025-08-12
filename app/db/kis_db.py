@@ -49,6 +49,8 @@ def get_data():
         return None
 
 def insert_data(data):
+    print('insert_data()')
+    print(data)
     try:
         for i in data:
             supabase.table("transaction_info").insert(i).execute()

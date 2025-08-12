@@ -4,6 +4,7 @@ import json
 import pandas as pd
 import websockets
 import traceback
+import math
 
 import websocket_manager
 from app.core.config import settings
@@ -38,8 +39,11 @@ async def start_kis_receiver():
 
                         jango_df = update_jango_df(data[['종목코드', '새현재가']].copy())
                         jango_df = jango_df[col_names]
-                        json_data = strip_zeros(jango_df.to_dict(orient="records"))
+                        cols = ['주문수량', '체결수량', '체결단가']
+                        jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0')) #.replace('', '0'))
+                        json_data = jango_df.to_dict(orient="records")
                         data = {"type": "stock_data", "data": json_data}
+                        print('json_data', data)
                         await websocket_manager.manager.broadcast(json.dumps(data))
                         print('데이터프레임 전송완료')
 
@@ -47,17 +51,18 @@ async def start_kis_receiver():
                         # sanare78^5014279001^0000001562^^02^0^00^0^027360^0000000001^000002200^092701^0^1^1^00950^000000001^신명진^1Y^10^^아주IB투자^
                         trans_df = data.copy()
                         print('체결통보 df')
-                        print(jango_df)
-                        print(jango_df.columns)
                         if trans_df['매도매수구분'].values[0] == '02':    # 01: 매도, 02: 매수
                             jango_df = await kis.buy_update(ws=ws, jango_df=jango_df, trans_df=trans_df)
 
                         elif trans_df['매도매수구분'].values[0] == '01':    # 01: 매도, 02: 매수
                             jango_df = kis.sell_update(jango_df=jango_df, trans_df=trans_df)
-                        jango_df = jango_df[col_names].sort_values(by='매수_주문번호')
-                        json_data = strip_zeros(jango_df.to_dict(orient="records"))
-                        print('json_data', json_data)
+                        print(jango_df)
+                        print(jango_df.columns)
+                        jango_df = jango_df[col_names].sort_values(by='매수_주문번호').fillna('')
+                        cols = ['매수_주문번호', '주문수량', '체결수량', '체결단가', '매도_주문번호']
+                        jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0')) #.replace('', '0'))
                         data = {"type": "stock_data", "data": json_data}
+                        print('json_data', data)
                         await websocket_manager.manager.broadcast(json.dumps(data))
                         print('데이터프레임 전송완료')
 
@@ -86,11 +91,12 @@ async def send_initial_data(websocket):
     print('직렬화 전')
     print(jango_json_data)
     stock_data = {"type": "stock_data", "data": jango_json_data}
+    stock_data = safe_for_json(stock_data)
     await websocket.send_text(json.dumps(stock_data))
 
 # 숫자 앞 0을 없애주는 함수
 def strip_zeros(json_list: list[dict]) -> list[dict]:
-    keys_to_strip_zeros = ['매수_주문번호', '주문수량', '체결수량', '체결단가', '매도주문번호']
+    keys_to_strip_zeros = ['매수_주문번호', '주문수량', '체결수량', '체결단가', '매도_주문번호']
     for record in json_list:
         for key in keys_to_strip_zeros:
             if key in record and record[key]:
@@ -120,8 +126,14 @@ def update_jango_df(df: pd.DataFrame = None) -> pd.DataFrame:
         세금 = 매도가 * tax_rate
         실제_매도금액 = 매도가 - 매도_수수료 - 세금
 
-        jango_df['수익률'] = round(((실제_매도금액 - 실제_매수금액) / 실제_매수금액) * 100, 2)
+        jango_df['수익률'] = round(((실제_매도금액 - 실제_매수금액) / 실제_매수금액) * 100, 2).astype(str)
 
 
         return jango_df
 
+def safe_for_json(d):
+    for item in d['data']:
+        for k, v in item.items():
+            if isinstance(v, float) and math.isnan(v):
+                item[k] = ""  # 또는 None, "NaN" 등
+    return d
