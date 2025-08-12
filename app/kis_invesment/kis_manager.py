@@ -149,16 +149,18 @@ class kis_api:
         print('sell_update() 실행')
         print(trans_df)
         sell_ord_num = trans_df['주문번호'].values[0]
+        print('self.__sell_to_buy_order_map', self.__sell_to_buy_order_map)
+        print('sell_ord_num', sell_ord_num)
         buy_ord_num = self.__sell_to_buy_order_map[sell_ord_num]
         # 주문번호가 이미 존재하는지 확인
-        if buy_ord_num in jango_df['주문번호'].values:
+        if buy_ord_num in jango_df['매수_주문번호'].values:
 
-            idx = jango_df[jango_df['주문번호'] == buy_ord_num].index[0] # 기존 주문번호가 있는 행번호 가져오기
+            idx = jango_df[jango_df['매수_주문번호'] == buy_ord_num].index[0] # 기존 주문번호가 있는 행번호 가져오기
 
             # 수량 차감 (int로 변환 주의)
             기존_수량 = int(jango_df.at[idx, '체결수량'])
             print('기존수량', 기존_수량)
-            매도_수량 = int(trans_df['체결수량'])
+            매도_수량 = int(trans_df['체결수량'][0])
             print('매도_수량', 매도_수량)
             새로운_수량 = (기존_수량 - 매도_수량)
             print('새로운_수량', 새로운_수량)
@@ -267,7 +269,7 @@ class kis_api:
             if res_data.get("rt_cd") == "0":
                 print(f"[매도 주문 성공] {code} {qty}주 @ {price}원")
                 output = res_data.get("output")
-                sell_order_no = output.get("ODNO")  # 매도 주문번호 받아오기
+                sell_order_no =  output.get("ODNO")  # 매도 주문번호 받아오기
                 self.__sell_to_buy_order_map[sell_order_no] = buy_order_no  # {매도주문번호 : 매수주문번호} 맵핑
                 return sell_order_no
 

@@ -84,7 +84,7 @@ def generate_order_id():
 
 if __name__ == '__main__':
     # pass
-    insert_data(data)
-    # delete_data('ORD001')
+    # insert_data(data)
+    delete_data()
     # get_data()
 

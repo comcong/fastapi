@@ -59,8 +59,9 @@ async def start_kis_receiver():
                         print(jango_df)
                         print(jango_df.columns)
                         jango_df = jango_df[col_names].sort_values(by='매수_주문번호').fillna('')
-                        cols = ['매수_주문번호', '주문수량', '체결수량', '체결단가', '매도_주문번호']
+                        cols = ['주문수량', '체결수량', '체결단가']
                         jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0')) #.replace('', '0'))
+                        json_data = jango_df.to_dict(orient="records")
                         data = {"type": "stock_data", "data": json_data}
                         print('json_data', data)
                         await websocket_manager.manager.broadcast(json.dumps(data))
