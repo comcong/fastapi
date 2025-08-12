@@ -109,7 +109,8 @@
     const tableBody = document.querySelector("#data_table tbody");
     const messageBox = document.getElementById("messages");
 
-    let soldOrderNumbers = new Set();  // 전역 변수로 매도 주문을 보낸 주문번호들을 추적
+    // 전역 변수 초기화
+    let soldOrderNumbers = new Set(JSON.parse(localStorage.getItem('soldOrderNumbers') || '[]'));
 
     // 체결시간 문자열을 "HHMMSS" → "HH:MM:SS" 형식으로 변환
     function formatTimeString(hhmmss) {
@@ -161,6 +162,7 @@
       };
       ws.send(JSON.stringify(sellRequest));
       soldOrderNumbers.add(orderNumber);  // 매도 주문번호를 Set에 추가
+      localStorage.setItem('soldOrderNumbers', JSON.stringify([...soldOrderNumbers]));
 
       // 매도 버튼을 정정 버튼으로 바꾼다.
       if (buttonEl) {
