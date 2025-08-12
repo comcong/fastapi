@@ -149,7 +149,7 @@
         return;
       }
 
-      // 매도 요청을 서버로 전송
+      // 서버로 데이터를 보내는 부분
       const sellRequest = {
         type: "sell_order",
         data: {
@@ -173,7 +173,7 @@
     }
 
 
-
+   //  데이터를 받는 부분
     ws.onmessage = function(event) {
       const parsed = JSON.parse(event.data);
       if (parsed.type === "stock_data") {
