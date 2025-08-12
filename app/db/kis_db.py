@@ -59,7 +59,7 @@ def insert_data(data):
 
 def delete_data():
     try:
-        supabase.table("transaction_info").delete().neq("주문번호", None).execute()
+        supabase.table("transaction_info").delete().neq("매수_주문번호", None).execute()
         print("데이터 삭제 성공")
     except Exception as e:
         print("데이터 삭제 실패:", e)
@@ -68,7 +68,7 @@ def update_data(data: list):
     print(data)
     try:
         for i in data:
-            supabase.table("transaction_info").update(i).eq("주문번호", i['주문번호']).execute()
+            supabase.table("transaction_info").update(i).eq("매수_주문번호", i['주문번호']).execute()
         print("데이터 업데이트 성공:")
     except Exception as e:
         print("데이터 업데이트 실패:", e)
