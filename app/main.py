@@ -40,8 +40,16 @@ app = FastAPI(lifespan=lifespan)
 
 @app.get("/")
 async def transaction(request: Request):
+    # global d2_cash
+    # d2_cash = f"{int(d2_cash):,}"
     print('d2_cash', d2_cash)
-    return templates.TemplateResponse("test.html", {"request": request})
+    return templates.TemplateResponse(
+        "test.html",
+        {
+            "request": request,
+            "d2_cash": d2_cash
+        }
+    )
 
 
 @app.websocket("/ws")
@@ -66,9 +74,11 @@ async def websocket_endpoint(websocket: WebSocket):
 
     except Exception as e:
         print(["[main.py - 1 오류]"], e)
-    finally:
-        # 연결 정리
-        websocket_manager.manager.disconnect(websocket)
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+    # 예수금2
+    # 잔고  =  예수금2 + 매입금액 합계
+    # 평가금 = 예수금2 + 평가금액 합계
+    # 매수가능금액 = 예수금2 - 매입금액 합계

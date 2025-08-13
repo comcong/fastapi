@@ -96,7 +96,7 @@ class kis_api:
 
     async def buy_update(self, ws, jango_df, trans_df):
         print('buy_update() 실행')
-        ord_num = trans_df['주문번호'].values[0]
+        ord_num = self.__yymmdd + trans_df['주문번호'].values[0]
 
         # 주문번호가 이미 존재하는지 확인
         if ord_num in jango_df['매수_주문번호'].values:

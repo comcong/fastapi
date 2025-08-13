@@ -138,3 +138,36 @@ def safe_for_json(d):
             if isinstance(v, float) and math.isnan(v):
                 item[k] = ""  # 또는 None, "NaN" 등
     return d
+
+
+def update_balance(df, current_balance, sell_order_no, sell_qty, sell_price):
+    """
+    df: 현재 보유잔고 DataFrame (매수 주문들)
+    current_balance: 현재 잔고 (int or float)
+    sell_order_no: 실제 매도된 매도 주문번호 (str)
+    sell_qty: 매도 체결 수량 (int)
+    sell_price: 매도 체결 가격 (int or float)
+
+    반환: 업데이트된 잔고 (int or float)
+    """
+    # 1. 매도주문번호가 매수_주문번호 컬럼과 일치하는 행 찾기
+    matched_rows = df[df['매수_주문번호'] == sell_order_no]
+
+    if matched_rows.empty:
+        # 매도주문번호와 매칭되는 매수 주문이 없으면 예외처리 또는 기존 잔고 반환
+        print("Error: 매도 주문번호에 해당하는 매수 주문을 찾을 수 없습니다.")
+        return current_balance
+
+    # 2. 매입단가(체결단가) 가져오기 (여기선 첫 행 기준, 매수_주문번호는 유니크하므로 한 행만 있음)
+    buy_price = matched_rows.iloc[0]['체결단가']
+
+    # 3. 매도 체결 수량만큼 매입금액 차감
+    purchase_cost_reduction = sell_qty * buy_price
+
+    # 4. 매도 체결 금액 계산
+    sell_revenue = sell_qty * sell_price
+
+    # 5. 잔고 업데이트
+    updated_balance = current_balance - purchase_cost_reduction + sell_revenue
+
+    return updated_balance
