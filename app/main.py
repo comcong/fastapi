@@ -11,13 +11,13 @@ import kis_receiver
 from app.kis_invesment.kis_manager import kis
 import websocket_manager
 from app.db import kis_db
-from app.kis_invesment import account_balance
+# from app.kis_invesment import account_balance
 
 # templates 경로 설정
 PROJECT_ROOT = Path(__file__).parent.parent
 TEMPLATES_DIR = PROJECT_ROOT / "app/templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-d2_cash = account_balance.get_balance()
+# d2_cash = account_balance.get_balance()
 
 
 @asynccontextmanager
@@ -42,12 +42,14 @@ app = FastAPI(lifespan=lifespan)
 async def transaction(request: Request):
     # global d2_cash
     # d2_cash = f"{int(d2_cash):,}"
-    print('d2_cash', d2_cash)
+    print('d2_cash', kis_receiver.d2_cash)
+    print('balance', kis_receiver.balance)
     return templates.TemplateResponse(
         "test.html",
         {
             "request": request,
-            "d2_cash": d2_cash
+            "d2_cash": kis_receiver.d2_cash,
+            "balance": kis_receiver.balance,
         }
     )
 
