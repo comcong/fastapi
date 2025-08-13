@@ -54,6 +54,7 @@ def insert_data(data):
     print(data)
     try:
         for i in data:
+            i["actor"] = "server:fastapi"  # 또는 원하는 구분값
             supabase.table("transaction_info").insert(i).execute()
         print("데이터 삽입 성공")
 
@@ -71,6 +72,7 @@ def update_data(data: list):
     print(data)
     try:
         for i in data:
+            i["actor"] = "server:fastapi"
             supabase.table("transaction_info").update(i).eq("매수_주문번호", i['주문번호']).execute()
         print("데이터 업데이트 성공:")
     except Exception as e:
@@ -86,6 +88,6 @@ def generate_order_id():
 if __name__ == '__main__':
     # pass
     insert_data(data)
-    # delete_data()
+    delete_data()
     # get_data()
 

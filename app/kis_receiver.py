@@ -13,26 +13,13 @@ from app.kis_invesment.kis_manager import kis
 from app.kis_invesment import account_balance
 
 jango_df: pd.DataFrame = pd.DataFrame()
-col_names = ['매수_주문번호', '종목명', '종목코드', '체결시간', '주문수량', '체결수량', '체결단가', '현재가', '수익률', '매도_주문가격', '매도_주문번호']
 d2_cash = account_balance.get_balance()
-balance = ''
-
-# 잔고 = 예수금 + (DataFrame 내 남아있는 모든 매수 잔고의 매입금액 총합)
 
 async def start_kis_receiver():
     global jango_df
-    global balance
-    jango_df = jango_db()
-    # 체결시간_포맷()
+    col_names = ['매수_주문번호', '종목명', '종목코드', '체결시간', '주문수량', '체결수량', '체결단가', '현재가', '수익률', '매도_주문가격', '매도_주문번호']
+    jango_df = jango_db(col_names)
     code_list = jango_df['종목코드'].unique().tolist()  # DB 에서 종목코드 가져옴
-
-
-
-    매입금액_총합 = (jango_df['체결수량'].astype(int) * jango_df['체결단가'].astype(int)).sum()
-    # 전역 상태로 관리되는 잔고 변수
-    balance = str(d2_cash + 매입금액_총합)  # 초기 잔고
-    # 매도 체결이 들어올 때 함수 호출
-
 
     async with websockets.connect(settings.ws_url) as ws:
         await kis.subscribe(ws=ws)
@@ -70,8 +57,7 @@ async def start_kis_receiver():
                             jango_df = await kis.buy_update(ws=ws, jango_df=jango_df, trans_df=trans_df)
 
                         elif trans_df['매도매수구분'].values[0] == '01':    # 01: 매도, 02: 매수
-                            balance = update_balance(jango_df, balance, trans_df['주문번호'][0], trans_df['체결수량'][0], trans_df['체결단가'][0])
-                            # def update_balance(df, current_balance, sell_order_no, sell_qty, sell_price):
+                            balance = update_balance(jango_df, balance, trans_df.at[0, '주문번호'], trans_df.at[0, '체결수량'], trans_df.at[0, '체결단가'])
 
                             jango_df = kis.sell_update(jango_df=jango_df, trans_df=trans_df)
                         print(jango_df)
@@ -100,7 +86,7 @@ async def start_kis_receiver():
 
 
 
-def jango_db():
+def jango_db(col_names):
     supa_db = kis_db.get_data()
     jango_df = pd.DataFrame(supa_db, columns=col_names).sort_values('체결시간')
     return jango_df
@@ -159,15 +145,6 @@ def safe_for_json(d):
 
 
 def update_balance(df, current_balance, sell_order_no, sell_qty, sell_price):
-    """
-    df: 현재 보유잔고 DataFrame (매수 주문들)
-    current_balance: 현재 잔고 (int or float)
-    sell_order_no: 실제 매도된 매도 주문번호 (str)
-    sell_qty: 매도 체결 수량 (int)
-    sell_price: 매도 체결 가격 (int or float)
-
-    반환: 업데이트된 잔고 (int or float)
-    """
     # 1. 매도주문번호가 매수_주문번호 컬럼과 일치하는 행 찾기
     matched_rows = df[df['매도_주문번호'] == sell_order_no]
 
@@ -189,3 +166,8 @@ def update_balance(df, current_balance, sell_order_no, sell_qty, sell_price):
     updated_balance = current_balance - purchase_cost_reduction + sell_revenue
 
     return updated_balance
+
+def init_balance():
+    매입금액_총합 = (jango_df['체결수량'].astype(int) * jango_df['체결단가'].astype(int)).sum()
+    balance = str(int(d2_cash) + 매입금액_총합)  # 초기 잔고
+    return balance

@@ -40,16 +40,14 @@ app = FastAPI(lifespan=lifespan)
 
 @app.get("/")
 async def transaction(request: Request):
-    # global d2_cash
-    # d2_cash = f"{int(d2_cash):,}"
     print('d2_cash', kis_receiver.d2_cash)
-    print('balance', kis_receiver.balance)
+    print('balance', kis_receiver.init_balance())
     return templates.TemplateResponse(
         "test.html",
         {
             "request": request,
             "d2_cash": kis_receiver.d2_cash,
-            "balance": kis_receiver.balance,
+            "balance": kis_receiver.init_balance(),
         }
     )
 
