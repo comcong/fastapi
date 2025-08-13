@@ -90,7 +90,8 @@
 <body>
 
     <div class="summary">
-    <div>잔고:</div><div class="num">{{balance}}</div>
+    <div>잔고:</div>
+    <div class="num" id="balance_value">{{ '{:,}'.format(balance|int) if balance is not none else '-' }}</div>
     <div>평가금:</div><div class="num">554,885</div>
     <div>매수가능금액:</div><div class="num">11,235</div>
     </div>
@@ -132,6 +133,13 @@
 
     // 전역 변수 초기화
     let soldOrderNumbers = new Set(JSON.parse(localStorage.getItem('soldOrderNumbers') || '[]'));
+
+    // 숫자 값을 한국 로케일(ko-KR)로 천 단위 콤마가 들어간 문자열로 포맷
+    function formatNumber(n) {
+    const num = Number(n);
+    return Number.isFinite(num) ? num.toLocaleString('ko-KR') : n;
+    }
+
 
     // 체결시간 문자열을 "HHMMSS" → "HH:MM:SS" 형식으로 변환
     function formatTimeString(hhmmss) {
@@ -197,6 +205,21 @@
    //  데이터를 받는 부분
     ws.onmessage = function(event) {
       const parsed = JSON.parse(event.data);
+
+      if (parsed.type === "balance") {
+      const el = document.getElementById('balance_value');
+      if (el) el.textContent = formatNumber(parsed.data);
+      return;
+      }
+
+  // 기존 stock_data / message / sell_result 처리...
+};
+
+
+
+
+
+
       if (parsed.type === "stock_data") {
         const data = parsed.data;
 
