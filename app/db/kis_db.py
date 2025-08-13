@@ -2,6 +2,7 @@ from supabase import create_client, Client
 from app.core.config import settings
 import pandas as pd
 import random
+import os, traceback, datetime as dt
 
 url: str = settings.SUPABASE_URL
 key: str = settings.SUPABASE_KEY
@@ -63,10 +64,12 @@ def insert_data(data):
 
 def delete_data():
     try:
+        print(f"[delete_data ENTER] pid={os.getpid()} at={dt.datetime.now().isoformat()}", flush=True)
+        print("stack:\n" + "".join(traceback.format_stack(limit=6)), flush=True)
         supabase.table("transaction_info").delete().neq("매수_주문번호", None).execute()
-        print("데이터 삭제 성공")
+        print("[데이터 삭제 성공]", flush=True)
     except Exception as e:
-        print("데이터 삭제 실패:", e)
+        print("데이터 삭제 실패:", e, flush=True)
 
 def update_data(data: list):
     print(data)
@@ -78,16 +81,33 @@ def update_data(data: list):
     except Exception as e:
         print("데이터 업데이트 실패:", e)
 
+def upsert_data(data: list):
+    print('upsert_data 실행')
+    supabase.table("transaction_info").upsert(
+        data,
+        on_conflict="매수_주문번호",
+        ignore_duplicates=False,
+        default_to_null=False
+    ).execute()
+    print("데이터 업데이트 성공:")
 
 # 테스트용
 def generate_order_id():
     number = random.randint(1, 999)  # 1부터 999까지
     return f"ORD{number:03d}"  # 3자리로 포맷팅 (예: 1 → 001)
 
+def log():
+    # select logged_at, action, actor, user_id, client_ip,
+    #       old_row->>'매수_주문번호' as 매수_주문번호
+    # from audit.audit_log
+    # where table_name='transaction_info' and action='DELETE'
+    # order by id desc limit 50;
+    pass
+
 
 if __name__ == '__main__':
     # pass
     insert_data(data)
-    delete_data()
+    # delete_data()
     # get_data()
 

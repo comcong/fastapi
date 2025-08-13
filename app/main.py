@@ -31,23 +31,22 @@ async def lifespan(app: FastAPI):
     except asyncio.CancelledError:
         pass
     if not kis_receiver.jango_df.empty:
-        kis_db.delete_data()
+        # kis_db.delete_data()
         print("앱 종료전 kis_receiver.jango_df")
         print(kis_receiver.jango_df)
-        kis_db.insert_data(kis_receiver.jango_df.to_dict(orient="records"))
+        # kis_db.insert_data(kis_receiver.jango_df.to_dict(orient="records"))
+        kis_db.upsert_data(kis_receiver.jango_df.to_dict(orient="records"))
 
 app = FastAPI(lifespan=lifespan)
 
 @app.get("/")
 async def transaction(request: Request):
-    print('d2_cash', kis_receiver.d2_cash)
     print('balance', kis_receiver.init_balance())
     return templates.TemplateResponse(
         "test.html",
         {
             "request": request,
-            "d2_cash": kis_receiver.d2_cash,
-            "balance": kis_receiver.init_balance(),
+            "balance": kis_receiver.balance,
         }
     )
 

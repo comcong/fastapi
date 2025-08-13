@@ -14,11 +14,15 @@ from app.kis_invesment import account_balance
 
 jango_df: pd.DataFrame = pd.DataFrame()
 d2_cash = account_balance.get_balance()
+balance = ''
 
 async def start_kis_receiver():
+    print("<UNK> <UNK> kis_receiver")
     global jango_df
+    global balance
     col_names = ['매수_주문번호', '종목명', '종목코드', '체결시간', '주문수량', '체결수량', '체결단가', '현재가', '수익률', '매도_주문가격', '매도_주문번호']
     jango_df = jango_db(col_names)
+    balance = init_balance()
     code_list = jango_df['종목코드'].unique().tolist()  # DB 에서 종목코드 가져옴
 
     async with websockets.connect(settings.ws_url) as ws:
@@ -144,27 +148,17 @@ def safe_for_json(d):
     return d
 
 
-def update_balance(df, current_balance, sell_order_no, sell_qty, sell_price):
-    # 1. 매도주문번호가 매수_주문번호 컬럼과 일치하는 행 찾기
-    matched_rows = df[df['매도_주문번호'] == sell_order_no]
+def update_balance(jango_df, balance , sell_order_no, sell_qty, sell_price):
+    matched_rows = jango_df[jango_df['매도_주문번호'] == sell_order_no]        # jango_df 에서 매도_주문번호 행 찾기
 
-    if matched_rows.empty:
-        # 매도주문번호와 매칭되는 매수 주문이 없으면 예외처리 또는 기존 잔고 반환
-        print("Error: 매도 주문번호에 해당하는 매수 주문을 찾을 수 없습니다.")
-        return current_balance
+    if matched_rows.empty:    # 매도_주문번호가 없으면 기존 잔고 반환
+        print("Error: 매도_주문번호를 찾을 수 없습니다.")
+        return balance
 
-    # 2. 매입단가(체결단가) 가져오기 (여기선 첫 행 기준, 매수_주문번호는 유니크하므로 한 행만 있음)
-    buy_price = int(matched_rows.iloc[0, '체결단가'])
-
-    # 3. 매도 체결 수량만큼 매입금액 차감
-    purchase_cost_reduction = int(sell_qty) * buy_price
-
-    # 4. 매도 체결 금액 계산
-    sell_revenue = sell_qty * sell_price
-
-    # 5. 잔고 업데이트
-    updated_balance = current_balance - purchase_cost_reduction + sell_revenue
-
+    purchase_price = int(matched_rows.at[0, '체결단가'])        # 매입단가
+    purchase_cost_reduction = int(sell_qty) * purchase_price  # 매입금액
+    sell_revenue = sell_qty * sell_price   # 매도 체결 금액
+    updated_balance = balance  - purchase_cost_reduction + sell_revenue  # 5. 잔고 업데이트
     return updated_balance
 
 def init_balance():
