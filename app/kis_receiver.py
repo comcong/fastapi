@@ -43,10 +43,10 @@ async def start_kis_receiver():
                         print('tr_id == "H0STCNT0":')
 
                         jango_df = update_jango_df(data[['종목코드', '새현재가']].copy())
-                        jango_df = jango_df[col_names]
+                        jango_df = jango_df
                         cols = ['주문수량', '체결수량', '체결단가', '매도_주문가격']
                         jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0'))
-                        json_data = jango_df.to_dict(orient="records")
+                        json_data = jango_df.drop(columns='체결량').to_dict(orient="records")
                         data = {"type": "stock_data", "data": json_data}
                         print('json_data', data)
                         await websocket_manager.manager.broadcast(json.dumps(data))
@@ -67,20 +67,20 @@ async def start_kis_receiver():
                             jango_df = kis.sell_update(jango_df=jango_df, trans_df=trans_df)
                         print(jango_df.info())
                         print(jango_df.columns)
-                        for col in jango_df.columns:
-                            print('시리즈')
-                            print(jango_df[col])
-                            print()
-
-                        for col in jango_df.columns:
-                            types = jango_df[col].dropna().apply(type).unique()
-                            if len(types) > 1:
-                                print(f"{col} 컬럼에 섞인 타입 있음: {types}")
+                        # for col in jango_df.columns:
+                        #     print('시리즈')
+                        #     print(jango_df[col])
+                        #     print()
+                        #
+                        # for col in jango_df.columns:
+                        #     types = jango_df[col].dropna().apply(type).unique()
+                        #     if len(types) > 1:
+                        #         print(f"{col} 컬럼에 섞인 타입 있음: {types}")
 
                         jango_df = jango_df.sort_values(by='매수_주문번호').fillna('')
                         # cols = ['주문수량', '체결수량', '체결단가', '매도_주문가격', '매도_주문수량', '매도_체결수량']
-                        jango_df[col_names] = jango_df[col_names].apply(lambda col: col.astype(str).str.lstrip('0'))
-                        json_data = jango_df.to_dict(orient="records")
+                        jango_df = jango_df.apply(lambda col: col.astype(str).str.lstrip('0'))
+                        json_data = jango_df.drop(columns='체결량').to_dict(orient="records")
                         data = {"type": "stock_data", "data": json_data}
                         print('json_data', data)
                         await websocket_manager.manager.broadcast(json.dumps(data))

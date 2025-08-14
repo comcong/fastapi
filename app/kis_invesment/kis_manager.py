@@ -154,7 +154,7 @@ class kis_api:
 
         if sell_ord_num in self.__sell_to_buy_order_map:
             buy_ord_num = self.__sell_to_buy_order_map[sell_ord_num]
-            # 주문번호가 이미 존재하는지 확인
+            # 주문번호가 존재하는지 확인
             if buy_ord_num in jango_df['매수_주문번호'].values:
 
                 idx = jango_df[jango_df['매수_주문번호'] == buy_ord_num].index[0] # 기존 주문번호가 있는 행번호 가져오기

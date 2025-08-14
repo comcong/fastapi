@@ -111,6 +111,8 @@
                 <th>체결잔량</th>
                 <th>매도_주문번호</th>
                 <th>매도</th>
+<!--["매수_주문번호", "종목명", "종목코드", "체결시간", "주문수량", "체결수량", "체결단가", "현재가", "수익률", "매도_주문가격", "매도_주문수량", "체결잔량", "매도_주문번호"]-->
+<!--['매수_주문번호', '종목명', '종목코드', '체결시간', '주문수량', '체결수량', '체결단가', '현재가', '수익률', '매도_주문가격', '매도_주문수량', '체결량', '체결잔량', '매도_주문번호']-->
             </tr>
         </thead>
         <tbody></tbody>
@@ -119,168 +121,199 @@
     <h1>메시지 로그</h1>
     <div id="messages"></div>
 
-<script>
-    const protocol = location.protocol === "https:" ? "wss" : "ws";
-    const ws = new WebSocket(`${protocol}://${location.host}/ws`);
+ <script>
+// 현재 페이지가 HTTPS이면 wss, 아니면 ws 사용
+const protocol = location.protocol === "https:" ? "wss" : "ws";
+// WebSocket 서버 연결 생성
+const ws = new WebSocket(`${protocol}://${location.host}/ws`);
 
-    const tableBody = document.querySelector("#data_table tbody");
-    const messageBox = document.getElementById("messages");
+// 테이블 tbody와 메시지 박스 DOM 참조
+const tableBody = document.querySelector("#data_table tbody");
+const messageBox = document.getElementById("messages");
 
-    let soldOrderNumbers = new Set(JSON.parse(localStorage.getItem('soldOrderNumbers') || '[]'));
+// 이미 매도한 주문번호를 localStorage에서 불러와 Set으로 관리
+let soldOrderNumbers = new Set(JSON.parse(localStorage.getItem('soldOrderNumbers') || '[]'));
 
-    function formatNumber(n) {
-        const num = Number(n);
-        return Number.isFinite(num) ? num.toLocaleString('ko-KR') : n;
+// 숫자를 한국식 천 단위 콤마로 포맷
+function formatNumber(n) {
+    const num = Number(n);
+    return Number.isFinite(num) ? num.toLocaleString('ko-KR') : n;
+}
+
+// 체결시간 문자열(YYYYMMDDhhmmss)을 읽기 쉽게 포맷
+function formatTimeString(hhmmss) {
+    if (typeof hhmmss !== 'string' || hhmmss.length !== 12) return hhmmss;
+    return hhmmss.slice(0, 2) + '년' + hhmmss.slice(2, 4) + '월' + hhmmss.slice(4, 6) + '일 ' +
+           hhmmss.slice(6, 8) + '시' + hhmmss.slice(8, 10) + '분' + hhmmss.slice(10, 12) + '초';
+}
+
+// 수익률에 따라 CSS 클래스 반환 (색상 표시용)
+function getProfitClass(profitRate) {
+    if (!profitRate) return 'profit-zero';
+    const rate = parseFloat(profitRate);
+    if (rate > 0) return 'profit-positive';
+    if (rate < 0) return 'profit-negative';
+    return 'profit-zero';
+}
+
+// 매도 버튼 클릭 시 실행되는 함수
+function handleSellClick(orderNumber, stockCode, stockName, quantity, currentPrice, buttonEl) {
+    // 매도 가격 입력 받기 (prompt)
+    const input = prompt(
+        `매도 가격을 입력하세요.\n현재가: ${currentPrice}원`,
+        String(currentPrice)
+    );
+    if (input === null) return; // 취소하면 종료
+
+    const trimmed = input.trim();
+    let chosenPrice = trimmed === '' ? Number(currentPrice) : Number(trimmed.replace(/,/g, ''));
+    if (isNaN(chosenPrice) || chosenPrice <= 0) { // 유효성 검사
+        alert('유효한 가격을 입력하세요.');
+        return;
     }
 
-    function formatTimeString(hhmmss) {
-        if (typeof hhmmss !== 'string' || hhmmss.length !== 12) return hhmmss;
-        return hhmmss.slice(0, 2) + '년' + hhmmss.slice(2, 4) + '월' + hhmmss.slice(4, 6) + '일 ' +
-               hhmmss.slice(6, 8) + '시' + hhmmss.slice(8, 10) + '분' + hhmmss.slice(10, 12) + '초';
+    // 최종 확인
+    if (!confirm(`정말로 ${stockName}(${stockCode}) ${quantity}주를 매도하시겠습니까?\n매도 가격: ${chosenPrice}원`)) {
+        return;
     }
 
-    function getProfitClass(profitRate) {
-        if (!profitRate) return 'profit-zero';
-        const rate = parseFloat(profitRate);
-        if (rate > 0) return 'profit-positive';
-        if (rate < 0) return 'profit-negative';
-        return 'profit-zero';
+    // 매도 요청 객체 생성
+    const sellRequest = {
+        type: "sell_order",
+        data: {
+            order_number: orderNumber,
+            stock_code: stockCode,
+            stock_name: stockName,
+            quantity: quantity,
+            current_price: String(chosenPrice)
+        }
+    };
+    // WebSocket으로 서버 전송
+    ws.send(JSON.stringify(sellRequest));
+
+    // localStorage에 매도 주문 저장
+    soldOrderNumbers.add(orderNumber);
+    localStorage.setItem('soldOrderNumbers', JSON.stringify([...soldOrderNumbers]));
+
+    // 버튼 텍스트 변경 ("정정"으로)
+    if (buttonEl) {
+        buttonEl.textContent = '정정';
     }
 
-    function handleSellClick(orderNumber, stockCode, stockName, quantity, currentPrice, buttonEl) {
-        const input = prompt(
-            `매도 가격을 입력하세요.\n현재가: ${currentPrice}원`,
-            String(currentPrice)
-        );
-        if (input === null) return;
+    console.log('매도 요청 전송:', sellRequest);
+}
 
-        const trimmed = input.trim();
-        let chosenPrice = trimmed === '' ? Number(currentPrice) : Number(trimmed.replace(/,/g, ''));
-        if (isNaN(chosenPrice) || chosenPrice <= 0) {
-            alert('유효한 가격을 입력하세요.');
+// WebSocket으로 메시지 수신 시 처리
+ws.onmessage = function(event) {
+    const parsed = JSON.parse(event.data); // JSON 파싱
+
+    // 잔고 업데이트
+    if (parsed.type === "balance") {
+        const el = document.getElementById('balance_value');
+        if (el) el.textContent = formatNumber(parsed.data);
+        return;
+    }
+
+    // 체결 데이터 수신
+    if (parsed.type === "stock_data") {
+        const data = parsed.data;    // 수신된 체결데이터 배열로 저장
+        tableBody.innerHTML = ""; // 기존 테이블 초기화
+
+        // 데이터가 없으면 "데이터가 없습니다" 표시
+        if (!data || data.length === 0) {
+            const tr = document.createElement("tr");
+            const td = document.createElement("td");
+            td.colSpan = 14;
+            td.textContent = "데이터가 없습니다.";
+            td.style.fontStyle = "italic";
+            tr.appendChild(td);
+            tableBody.appendChild(tr);
             return;
         }
 
-        if (!confirm(`정말로 ${stockName}(${stockCode}) ${quantity}주를 매도하시겠습니까?\n매도 가격: ${chosenPrice}원`)) {
-            return;
-        }
+        // 데이터 행 생성
+        data.forEach(row => {
+            const tr = document.createElement("tr");
+            const keys = ["매수_주문번호", "종목명", "종목코드", "체결시간", "주문수량", "체결수량", "체결단가", "현재가", "수익률", "매도_주문가격", "매도_주문수량", "체결잔량", "매도_주문번호"];
 
-        const sellRequest = {
-            type: "sell_order",
-            data: {
-                order_number: orderNumber,
-                stock_code: stockCode,
-                stock_name: stockName,
-                quantity: quantity,
-                current_price: String(chosenPrice)
-            }
-        };
-        ws.send(JSON.stringify(sellRequest));
-        soldOrderNumbers.add(orderNumber);
-        localStorage.setItem('soldOrderNumbers', JSON.stringify([...soldOrderNumbers]));
-
-        if (buttonEl) {
-            buttonEl.textContent = '정정';
-        }
-
-        console.log('매도 요청 전송:', sellRequest);
-    }
-
-    ws.onmessage = function(event) {
-        const parsed = JSON.parse(event.data);
-
-        if (parsed.type === "balance") {
-            const el = document.getElementById('balance_value');
-            if (el) el.textContent = formatNumber(parsed.data);
-            return;
-        }
-
-        if (parsed.type === "stock_data") {
-            const data = parsed.data;
-            tableBody.innerHTML = "";
-
-            if (!data || data.length === 0) {
-                const tr = document.createElement("tr");
+            // 각 컬럼 생성
+            keys.forEach(key => {
                 const td = document.createElement("td");
-                td.colSpan = 14;
-                td.textContent = "데이터가 없습니다.";
-                td.style.fontStyle = "italic";
+                let value = row[key] || "";
+                if (key === "체결시간") {
+                    value = formatTimeString(value); // 시간 포맷
+                }
+                if (key === "수익률") {
+                    td.className = getProfitClass(value); // 수익률 색상
+                    if (value) value = value + '%';
+                }
+                td.textContent = value;
                 tr.appendChild(td);
-                tableBody.appendChild(tr);
-                return;
-            }
-
-            data.forEach(row => {
-                const tr = document.createElement("tr");
-                const keys = ["매수_주문번호", "종목명", "종목코드", "체결시간", "주문수량", "체결수량", "체결단가", "현재가", "수익률", "매도_주문가격", "매도_주문수량", "체결잔량", "매도_주문번호"];
-
-                keys.forEach(key => {
-                    const td = document.createElement("td");
-                    let value = row[key] || "";
-                    if (key === "체결시간") {
-                        value = formatTimeString(value);
-                    }
-                    if (key === "수익률") {
-                        td.className = getProfitClass(value);
-                        if (value) value = value + '%';
-                    }
-                    td.textContent = value;
-                    tr.appendChild(td);
-                });
-
-                const sellTd = document.createElement("td");
-                const sellButton = document.createElement("button");
-                sellButton.className = "sell-button";
-                sellButton.textContent = soldOrderNumbers.has(row["매수_주문번호"]) ? "정정" : "매도";
-                sellButton.onclick = function() {
-                    handleSellClick(
-                        row["매수_주문번호"],
-                        row["종목코드"],
-                        row["종목명"],
-                        row["체결수량"],
-                        row["현재가"],
-                        this
-                    );
-                };
-                sellTd.appendChild(sellButton);
-                tr.appendChild(sellTd);
-
-                tableBody.appendChild(tr);
             });
-        }
 
-        if (parsed.type === "message") {
-            const msg = parsed.data;
-            const div = document.createElement("div");
-            div.className = "message-line";
-            div.textContent = typeof msg === 'object' ? JSON.stringify(msg, null, 2) : msg;
-            messageBox.innerHTML = "";
-            messageBox.appendChild(div);
-            messageBox.scrollTop = messageBox.scrollHeight;
-        }
+            // 매도 버튼 컬럼 생성
+            const sellTd = document.createElement("td");
+            const sellButton = document.createElement("button");
+            sellButton.className = "sell-button";
+            // 이미 매도한 주문이면 "정정", 아니면 "매도"
+            sellButton.textContent = soldOrderNumbers.has(row["매수_주문번호"]) ? "정정" : "매도";
+            sellButton.onclick = function() {
+                handleSellClick(
+                    row["매수_주문번호"],
+                    row["종목코드"],
+                    row["종목명"],
+                    row["체결수량"],
+                    row["현재가"],
+                    this
+                );
+            };
+            sellTd.appendChild(sellButton);
+            tr.appendChild(sellTd);
 
-        if (parsed.type === "sell_result") {
-            const result = parsed.data;
-            const div = document.createElement("div");
-            div.className = "message-line";
-            div.style.color = result.success ? "green" : "red";
-            div.textContent = `매도 결과: ${result.message}`;
-            messageBox.appendChild(div);
-            messageBox.scrollTop = messageBox.scrollHeight;
-        }
-    };
+            tableBody.appendChild(tr);
+        });
+    }
 
-    ws.onopen = function() {
-        console.log('웹소켓 연결됨');
-    };
+    // 일반 메시지 로그
+    if (parsed.type === "message") {
+        const msg = parsed.data;
+        const div = document.createElement("div");
+        div.className = "message-line";
+        div.textContent = typeof msg === 'object' ? JSON.stringify(msg, null, 2) : msg;
+        messageBox.innerHTML = ""; // 기존 로그 초기화
+        messageBox.appendChild(div);
+        messageBox.scrollTop = messageBox.scrollHeight; // 스크롤 맨 아래
+    }
 
-    ws.onerror = function(error) {
-        console.error('웹소켓 오류:', error);
-    };
+    // 매도 결과 수신
+    if (parsed.type === "sell_result") {
+        const result = parsed.data;
+        const div = document.createElement("div");
+        div.className = "message-line";
+        div.style.color = result.success ? "green" : "red"; // 성공/실패 색상
+        div.textContent = `매도 결과: ${result.message}`;
+        messageBox.appendChild(div);
+        messageBox.scrollTop = messageBox.scrollHeight;
+    }
+};
 
-    ws.onclose = function() {
-        console.log('웹소켓 연결 종료');
-    };
+// WebSocket 연결 이벤트
+ws.onopen = function() {
+    console.log('웹소켓 연결됨');
+};
+
+// WebSocket 오류 이벤트
+ws.onerror = function(error) {
+    console.error('웹소켓 오류:', error);
+};
+
+// WebSocket 종료 이벤트
+ws.onclose = function() {
+    console.log('웹소켓 연결 종료');
+};
 </script>
+
+
+
 </body>
 </html>
