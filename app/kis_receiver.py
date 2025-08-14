@@ -24,76 +24,84 @@ async def start_kis_receiver():
     balance = init_balance()
     code_list = jango_df['종목코드'].unique().tolist()  # DB 에서 종목코드 가져옴
 
-    async with websockets.connect(settings.ws_url) as ws:
-        await kis.subscribe(ws=ws)
-        await kis.subscribe(ws=ws, tr_id='H0STCNT0', code_list=code_list)
 
-        while True:
-            try:
-                raw_data = await ws.recv()        # ws로부터 데이터 수신
-                # print("수신된 원본 데이터: ")
-                # print(raw_data)
-                data = await kis.make_data(raw_data)  # 데이터 가공
-                print("수신된 가공 데이터: ")
-                print(data)
 
-                if isinstance(data, pd.DataFrame):
-                    tr_id = data.iloc[0]['tr_id']
-                    if tr_id == 'H0STCNT0':            # 실시간 현재가가 들어오는 경우
-                        print('tr_id == "H0STCNT0":')
+    while True:
+        try:
+            async with websockets.connect(settings.ws_url) as ws:
+                await kis.subscribe(ws=ws)
+                await kis.subscribe(ws=ws, tr_id='H0STCNT0', code_list=code_list)
 
-                        jango_df = update_jango_df(data[['종목코드', '새현재가']].copy())
-                        jango_df = jango_df
-                        cols = ['주문수량', '체결수량', '체결단가', '매도_주문가격']
-                        jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0'))
-                        json_data = jango_df.drop(columns='체결량').to_dict(orient="records")
-                        data = {"type": "stock_data", "data": json_data}
-                        print('json_data', data)
-                        await websocket_manager.manager.broadcast(json.dumps(data))
-                        print('데이터프레임 전송완료')
+                while True:
+                    raw_data = await ws.recv()        # ws로부터 데이터 수신
+                    # print("수신된 원본 데이터: ")
+                    # print(raw_data)
+                    data = await kis.make_data(raw_data)  # 데이터 가공
+                    print("수신된 가공 데이터: ")
+                    print(data)
 
-                    elif (tr_id in ['H0STCNI9', 'H0STCNI0']) and (data['체결여부'].values.tolist()[0] == '2'):  # 체결통보 데이터
-                        # sanare78^5014279001^0000001562^^02^0^00^0^027360^0000000001^000002200^092701^0^1^1^00950^000000001^신명진^1Y^10^^아주IB투자^
-                        trans_df = data.copy()
-                        print('체결통보 df')
-                        if trans_df['매도매수구분'].values[0] == '02':    # 01: 매도, 02: 매수
-                            jango_df = await kis.buy_update(ws=ws, jango_df=jango_df, trans_df=trans_df)
+                    if isinstance(data, pd.DataFrame):
+                        tr_id = data.iloc[0]['tr_id']
+                        if tr_id == 'H0STCNT0':            # 실시간 현재가가 들어오는 경우
+                            print('tr_id == "H0STCNT0":')
 
-                        elif trans_df['매도매수구분'].values[0] == '01':    # 01: 매도, 02: 매수
-                            balance = update_balance(jango_df, balance, trans_df.at[0, '주문번호'], trans_df.at[0, '체결수량'], trans_df.at[0, '체결단가'])
-                            balance_data = {"type": "balance", "data": balance}
-                            await websocket_manager.manager.broadcast(json.dumps(balance_data))
+                            jango_df = update_jango_df(data[['종목코드', '새현재가']].copy())
+                            jango_df = jango_df
+                            cols = ['주문수량', '체결수량', '체결단가', '매도_주문가격']
+                            jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0'))
+                            json_data = jango_df.drop(columns='체결량').to_dict(orient="records")
+                            data = {"type": "stock_data", "data": json_data}
+                            print('json_data', data)
+                            await websocket_manager.manager.broadcast(json.dumps(data))
+                            print('데이터프레임 전송완료')
 
-                            jango_df = kis.sell_update(jango_df=jango_df, trans_df=trans_df)
-                        print(jango_df.info())
-                        print(jango_df.columns)
-                        # for col in jango_df.columns:
-                        #     print('시리즈')
-                        #     print(jango_df[col])
-                        #     print()
-                        #
-                        # for col in jango_df.columns:
-                        #     types = jango_df[col].dropna().apply(type).unique()
-                        #     if len(types) > 1:
-                        #         print(f"{col} 컬럼에 섞인 타입 있음: {types}")
+                        elif (tr_id in ['H0STCNI9', 'H0STCNI0']) and (data['체결여부'].values.tolist()[0] == '2'):  # 체결통보 데이터
+                            # sanare78^5014279001^0000001562^^02^0^00^0^027360^0000000001^000002200^092701^0^1^1^00950^000000001^신명진^1Y^10^^아주IB투자^
+                            trans_df = data.copy()
+                            print('체결통보 df')
+                            if trans_df['매도매수구분'].values[0] == '02':    # 01: 매도, 02: 매수
+                                jango_df = await kis.buy_update(ws=ws, jango_df=jango_df, trans_df=trans_df)
 
-                        jango_df = jango_df.sort_values(by='매수_주문번호').fillna('')
-                        # cols = ['주문수량', '체결수량', '체결단가', '매도_주문가격', '매도_주문수량', '매도_체결수량']
-                        jango_df = jango_df.apply(lambda col: col.astype(str).str.lstrip('0'))
-                        json_data = jango_df.drop(columns='체결량').to_dict(orient="records")
-                        data = {"type": "stock_data", "data": json_data}
-                        print('json_data', data)
-                        await websocket_manager.manager.broadcast(json.dumps(data))
-                        print('데이터프레임 전송완료')
+                            elif trans_df['매도매수구분'].values[0] == '01':    # 01: 매도, 02: 매수
+                                balance = update_balance(jango_df, balance, trans_df.at[0, '주문번호'], trans_df.at[0, '체결수량'], trans_df.at[0, '체결단가'])
+                                balance_data = {"type": "balance", "data": balance}
+                                await websocket_manager.manager.broadcast(json.dumps(balance_data))
 
-                else:
-                    msg_data = {"type": "message", "data": data}
-                    await websocket_manager.manager.broadcast(json.dumps(msg_data))
-                    print('json 전송완료')
+                                jango_df = kis.sell_update(jango_df=jango_df, trans_df=trans_df)
+                            print(jango_df.info())
+                            print(jango_df.columns)
+                            # for col in jango_df.columns:
+                            #     print('시리즈')
+                            #     print(jango_df[col])
+                            #     print()
+                            #
+                            # for col in jango_df.columns:
+                            #     types = jango_df[col].dropna().apply(type).unique()
+                            #     if len(types) > 1:
+                            #         print(f"{col} 컬럼에 섞인 타입 있음: {types}")
 
-            except Exception as e:
-                print("웹소켓 수신 오류: 1", e)
-                traceback.print_exc()
+                            jango_df = jango_df.sort_values(by='매수_주문번호').fillna('')
+                            # cols = ['주문수량', '체결수량', '체결단가', '매도_주문가격', '매도_주문수량', '매도_체결수량']
+                            jango_df = jango_df.apply(lambda col: col.astype(str).str.lstrip('0'))
+                            json_data = jango_df.drop(columns='체결량').to_dict(orient="records")
+                            data = {"type": "stock_data", "data": json_data}
+                            print('json_data', data)
+                            await websocket_manager.manager.broadcast(json.dumps(data))
+                            print('데이터프레임 전송완료')
+
+                    else:
+                        msg_data = {"type": "message", "data": data}
+                        await websocket_manager.manager.broadcast(json.dumps(msg_data))
+                        print('json 전송완료')
+
+        except websockets.ConnectionClosedError as e:
+            print("웹소켓 수신 오류:", e)
+        except ConnectionAbortedError as e:
+            print("네트워크 연결 끊김:", e)
+        except Exception as e:
+            print("start_kis_receiver 예외:", e)
+        await asyncio.sleep(5)  # 재연결 대기
+        print('5초간 대기')
 
 
 
