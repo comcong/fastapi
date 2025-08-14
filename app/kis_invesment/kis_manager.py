@@ -151,31 +151,33 @@ class kis_api:
         sell_ord_num = trans_df['주문번호'].values[0]
         print('self.__sell_to_buy_order_map', self.__sell_to_buy_order_map)
         print('sell_ord_num', sell_ord_num)
-        buy_ord_num = self.__sell_to_buy_order_map[sell_ord_num]
-        # 주문번호가 이미 존재하는지 확인
-        if buy_ord_num in jango_df['매수_주문번호'].values:
 
-            idx = jango_df[jango_df['매수_주문번호'] == buy_ord_num].index[0] # 기존 주문번호가 있는 행번호 가져오기
+        if sell_ord_num in self.__sell_to_buy_order_map:
+            buy_ord_num = self.__sell_to_buy_order_map[sell_ord_num]
+            # 주문번호가 이미 존재하는지 확인
+            if buy_ord_num in jango_df['매수_주문번호'].values:
 
-            # 수량 차감 (int로 변환 주의)
-            기존_수량 = int(jango_df.at[idx, '체결수량'])
-            print('기존수량', 기존_수량)
-            매도_수량 = int(trans_df['체결수량'][0])
-            print('매도_수량', 매도_수량)
-            새로운_수량 = (기존_수량 - 매도_수량)
-            print('새로운_수량', 새로운_수량)
-            jango_df.at[idx, '체결수량'] = str(새로운_수량)
+                idx = jango_df[jango_df['매수_주문번호'] == buy_ord_num].index[0] # 기존 주문번호가 있는 행번호 가져오기
 
-            if 새로운_수량 == 0:         # 수량이 모두 없어지면 행 제거
-                print('새로운_수량 == 0')
-                jango_df.drop(index=idx, inplace=True)
-                return jango_df
+                # 수량 차감 (int로 변환 주의)
+                기존_수량 = int(jango_df.at[idx, '체결수량'])
+                print('기존수량', 기존_수량)
+                매도_수량 = int(trans_df['체결수량'][0])
+                print('매도_수량', 매도_수량)
+                새로운_수량 = (기존_수량 - 매도_수량)
+                print('새로운_수량', 새로운_수량)
+                jango_df.at[idx, '체결수량'] = str(새로운_수량)
 
-            else:
-                return jango_df
+                if 새로운_수량 == 0:         # 수량이 모두 없어지면 행 제거
+                    print('새로운_수량 == 0')
+                    jango_df.drop(index=idx, inplace=True)
+                    return jango_df
+
+                else:
+                    return jango_df
 
         else:
-            print(f"주문번호 {buy_ord_num} 가 없는 매도가 체결되었습니다. 체결 데이터 확인 필요!!")
+            print(f"매수 주문번호가 없는 매도주문번호 {sell_ord_num} 가 체결되었습니다. 체결 데이터 확인 필요!!")
             return jango_df
 
 

@@ -17,7 +17,6 @@ d2_cash = account_balance.get_balance()
 balance = ''
 
 async def start_kis_receiver():
-    print("<UNK> <UNK> kis_receiver")
     global jango_df
     global balance
     col_names = ['매수_주문번호', '종목명', '종목코드', '체결시간', '주문수량', '체결수량', '체결단가', '현재가', '수익률', '매도_주문가격', '매도_주문번호']
@@ -98,24 +97,12 @@ def jango_db(col_names):
     return jango_df
 
 async def send_initial_data(websocket):
-    jango_json_data = strip_zeros(jango_df.to_dict(orient="records"))
+    jango_json_data = jango_df.fillna('').to_dict(orient="records")
     print('직렬화 전')
     print(jango_json_data)
     stock_data = {"type": "stock_data", "data": jango_json_data}
     stock_data = safe_for_json(stock_data)
     await websocket.send_text(json.dumps(stock_data))
-
-# 숫자 앞 0을 없애주는 함수
-def strip_zeros(json_list: list[dict]) -> list[dict]:
-    keys_to_strip_zeros = ['주문수량', '체결수량', '체결단가', '매도_주문가격']
-    for record in json_list:
-        for key in keys_to_strip_zeros:
-            if key in record and record[key]:
-                try:
-                    record[key] = str(int(record[key]))
-                except (ValueError, TypeError):
-                    pass  # 숫자 변환 불가능한 값은 건너뜀
-    return json_list
 
 def update_jango_df(df: pd.DataFrame = None) -> pd.DataFrame:
     global jango_df  # 실시간 현재가 데이터 전역변수 사용

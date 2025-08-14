@@ -4,20 +4,18 @@
     <meta charset="utf-8">
     <title>실시간 체결 통보</title>
     <style>
-            .summary {
-             display: grid;
-             grid-template-columns: auto 1fr; /* 왼쪽: 글씨, 오른쪽: 숫자 */
-             column-gap: 80px;               /* ← 여기 값을 더 키우면 간격이 더 벌어집니다 */
-
-             width: 900px;                   /* 전체 블록 폭 (필요시 조절) */
-             font-family: monospace;
-             font-size: 16px;
-             line-height: 1.8;
-             }
-            .summary .num {
-             text-align: right;              /* 숫자 오른쪽 정렬 */
-             }
-
+        .summary {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            column-gap: 80px;
+            width: 100%;
+            font-family: monospace;
+            font-size: 16px;
+            line-height: 1.8;
+        }
+        .summary .num {
+            text-align: right;
+        }
 
         body {
             font-family: Arial, sans-serif;
@@ -90,12 +88,11 @@
 <body>
 
     <div class="summary">
-    <div>잔고:</div>
-    <div class="num" id="balance_value">{{ '{:,}'.format(balance|int) if balance is not none else '-' }}</div>
-    <div>평가금:</div><div class="num">554,885</div>
-    <div>매수가능금액:</div><div class="num">11,235</div>
+        <div>잔고:</div>
+        <div class="num" id="balance_value">{{ '{:,}'.format(balance|int) if balance is not none else '-' }}</div>
+        <div>평가금:</div><div class="num">554,885</div>
+        <div>매수가능금액:</div><div class="num">11,235</div>
     </div>
-
 
     <table id="data_table">
         <thead>
@@ -121,209 +118,167 @@
     <div id="messages"></div>
 
 <script>
-
-    // 현재 페이지가 HTTPS인지 HTTP인지 확인하여 적절한 WebSocket 프로토콜 선택
     const protocol = location.protocol === "https:" ? "wss" : "ws";
-    // WebSocket 연결 생성 (현재 호스트의 /ws 엔드포인트로)
     const ws = new WebSocket(`${protocol}://${location.host}/ws`);
 
-    // HTML 테이블의 본문과 메시지 박스 요소 참조
     const tableBody = document.querySelector("#data_table tbody");
     const messageBox = document.getElementById("messages");
 
-    // 전역 변수 초기화
     let soldOrderNumbers = new Set(JSON.parse(localStorage.getItem('soldOrderNumbers') || '[]'));
 
-    // 숫자 값을 한국 로케일(ko-KR)로 천 단위 콤마가 들어간 문자열로 포맷
     function formatNumber(n) {
-    const num = Number(n);
-    return Number.isFinite(num) ? num.toLocaleString('ko-KR') : n;
+        const num = Number(n);
+        return Number.isFinite(num) ? num.toLocaleString('ko-KR') : n;
     }
 
-
-    // 체결시간 문자열을 "HHMMSS" → "HH:MM:SS" 형식으로 변환
     function formatTimeString(hhmmss) {
-      if (typeof hhmmss !== 'string' || hhmmss.length !== 12) return hhmmss;
-      return hhmmss.slice(0, 2) + '년' + hhmmss.slice(2, 4) + '월' + hhmmss.slice(4, 6) + '일 ' + hhmmss.slice(6, 8) + '시' + hhmmss.slice(8, 10) + '분' + hhmmss.slice(10, 12) + '초';
+        if (typeof hhmmss !== 'string' || hhmmss.length !== 12) return hhmmss;
+        return hhmmss.slice(0, 2) + '년' + hhmmss.slice(2, 4) + '월' + hhmmss.slice(4, 6) + '일 ' +
+               hhmmss.slice(6, 8) + '시' + hhmmss.slice(8, 10) + '분' + hhmmss.slice(10, 12) + '초';
     }
 
-    // 수익률에 따른 CSS 클래스 적용
     function getProfitClass(profitRate) {
-      if (!profitRate) return 'profit-zero';
-      const rate = parseFloat(profitRate);
-      if (rate > 0) return 'profit-positive';
-      if (rate < 0) return 'profit-negative';
-      return 'profit-zero';
+        if (!profitRate) return 'profit-zero';
+        const rate = parseFloat(profitRate);
+        if (rate > 0) return 'profit-positive';
+        if (rate < 0) return 'profit-negative';
+        return 'profit-zero';
     }
 
-    // 매도 버튼 클릭 이벤트 처리 (가격 입력 팝업 및 버튼 상태 제어 포함)
     function handleSellClick(orderNumber, stockCode, stockName, quantity, currentPrice, buttonEl) {
-      // 가격 입력 팝업 (기본값: 현재가)
-      const input = prompt(
-        `매도 가격을 입력하세요.\n현재가: ${currentPrice}원`,
-        String(currentPrice)
-      );
-      if (input === null) return; // 취소 시 종료
+        const input = prompt(
+            `매도 가격을 입력하세요.\n현재가: ${currentPrice}원`,
+            String(currentPrice)
+        );
+        if (input === null) return;
 
-      // 입력값 정리 및 검증
-      const trimmed = input.trim();
-      let chosenPrice = trimmed === '' ? Number(currentPrice) : Number(trimmed.replace(/,/g, ''));
-      if (isNaN(chosenPrice) || chosenPrice <= 0) {
-        alert('유효한 가격을 입력하세요.');
-        return;
-      }
-
-      // 최종 확인
-      if (!confirm(`정말로 ${stockName}(${stockCode}) ${quantity}주를 매도하시겠습니까?\n매도 가격: ${chosenPrice}원`)) {
-        return;
-      }
-
-      // 서버로 데이터를 보내는 부분
-      const sellRequest = {
-        type: "sell_order",
-        data: {
-          order_number: orderNumber,
-          stock_code: stockCode,
-          stock_name: stockName,
-          quantity: quantity,
-          current_price: String(chosenPrice)
+        const trimmed = input.trim();
+        let chosenPrice = trimmed === '' ? Number(currentPrice) : Number(trimmed.replace(/,/g, ''));
+        if (isNaN(chosenPrice) || chosenPrice <= 0) {
+            alert('유효한 가격을 입력하세요.');
+            return;
         }
-      };
-      ws.send(JSON.stringify(sellRequest));
-      soldOrderNumbers.add(orderNumber);  // 매도 주문번호를 Set에 추가
-      localStorage.setItem('soldOrderNumbers', JSON.stringify([...soldOrderNumbers]));
 
-      // 매도 버튼을 정정 버튼으로 바꾼다.
-      if (buttonEl) {
-        buttonEl.textContent = '정정';
-      }
+        if (!confirm(`정말로 ${stockName}(${stockCode}) ${quantity}주를 매도하시겠습니까?\n매도 가격: ${chosenPrice}원`)) {
+            return;
+        }
 
-      console.log('매도 요청 전송:', sellRequest);
+        const sellRequest = {
+            type: "sell_order",
+            data: {
+                order_number: orderNumber,
+                stock_code: stockCode,
+                stock_name: stockName,
+                quantity: quantity,
+                current_price: String(chosenPrice)
+            }
+        };
+        ws.send(JSON.stringify(sellRequest));
+        soldOrderNumbers.add(orderNumber);
+        localStorage.setItem('soldOrderNumbers', JSON.stringify([...soldOrderNumbers]));
+
+        if (buttonEl) {
+            buttonEl.textContent = '정정';
+        }
+
+        console.log('매도 요청 전송:', sellRequest);
     }
 
-
-   //  데이터를 받는 부분
     ws.onmessage = function(event) {
-      const parsed = JSON.parse(event.data);
+        const parsed = JSON.parse(event.data);
 
-      if (parsed.type === "balance") {
-      const el = document.getElementById('balance_value');
-      if (el) el.textContent = formatNumber(parsed.data);
-      return;
-      }
-
-  // 기존 stock_data / message / sell_result 처리...
-};
-
-
-
-
-
-
-      if (parsed.type === "stock_data") {
-        const data = parsed.data;
-
-        // 테이블 본문 비우기
-        tableBody.innerHTML = "";
-
-        if (!data || data.length === 0) {
-          const tr = document.createElement("tr");
-          const td = document.createElement("td");
-          td.colSpan = 11; // 컬럼개수 11개
-          td.textContent = "데이터가 없습니다.";
-          td.style.fontStyle = "italic";
-          tr.appendChild(td);
-          tableBody.appendChild(tr);
-          return;
+        if (parsed.type === "balance") {
+            const el = document.getElementById('balance_value');
+            if (el) el.textContent = formatNumber(parsed.data);
+            return;
         }
 
-        // 데이터가 있는 경우 테이블 업데이트
-        data.forEach(row => {
-          const tr = document.createElement("tr");
-          const keys = ["매수_주문번호", "종목명", "종목코드", "체결시간", "주문수량", "체결수량", "체결단가", "현재가", "수익률", "매도_주문가격", "매도_주문번호"];
+        if (parsed.type === "stock_data") {
+            const data = parsed.data;
+            tableBody.innerHTML = "";
 
-          // 기본 데이터 열들 추가
-          keys.forEach(key => {
-            const td = document.createElement("td");
-            let value = row[key] || "";
-
-            // 체결시간 포맷 적용
-            if (key === "체결시간") {
-              value = formatTimeString(value);
+            if (!data || data.length === 0) {
+                const tr = document.createElement("tr");
+                const td = document.createElement("td");
+                td.colSpan = 11;
+                td.textContent = "데이터가 없습니다.";
+                td.style.fontStyle = "italic";
+                tr.appendChild(td);
+                tableBody.appendChild(tr);
+                return;
             }
 
-            // 수익률에 스타일 적용
-            if (key === "수익률") {
-              td.className = getProfitClass(value);
-              if (value) {
-                value = value + '%';
-              }
-            }
+            data.forEach(row => {
+                const tr = document.createElement("tr");
+                const keys = ["매수_주문번호", "종목명", "종목코드", "체결시간", "주문수량", "체결수량", "체결단가", "현재가", "수익률", "매도_주문가격", "매도_주문번호"];
 
-            td.textContent = value;
-            tr.appendChild(td);
-          });
+                keys.forEach(key => {
+                    const td = document.createElement("td");
+                    let value = row[key] || "";
+                    if (key === "체결시간") {
+                        value = formatTimeString(value);
+                    }
+                    if (key === "수익률") {
+                        td.className = getProfitClass(value);
+                        if (value) value = value + '%';
+                    }
+                    td.textContent = value;
+                    tr.appendChild(td);
+                });
 
-          // 매도 버튼 열 추가
-          const sellTd = document.createElement("td");
-          const sellButton = document.createElement("button");
-          sellButton.className = "sell-button";
+                const sellTd = document.createElement("td");
+                const sellButton = document.createElement("button");
+                sellButton.className = "sell-button";
+                sellButton.textContent = soldOrderNumbers.has(row["매수_주문번호"]) ? "정정" : "매도";
+                sellButton.onclick = function() {
+                    handleSellClick(
+                        row["매수_주문번호"],
+                        row["종목코드"],
+                        row["종목명"],
+                        row["체결수량"],
+                        row["현재가"],
+                        this
+                    );
+                };
+                sellTd.appendChild(sellButton);
+                tr.appendChild(sellTd);
 
-          // 매도 주문을 보낸 주문번호인지 확인하여 버튼 텍스트 설정
-          if (soldOrderNumbers.has(row["매수_주문번호"])) {
-            sellButton.textContent = "정정";
-          } else {
-            sellButton.textContent = "매도";
-          }
+                tableBody.appendChild(tr);
+            });
+        }
 
-          sellButton.onclick = function() {
-            handleSellClick(
-              row["매수_주문번호"],
-              row["종목코드"],
-              row["종목명"],
-              row["체결수량"],
-              row["현재가"],
-              this // 버튼 엘리먼트 전달
-            );
-          };
-          sellTd.appendChild(sellButton);
-          tr.appendChild(sellTd);
+        if (parsed.type === "message") {
+            const msg = parsed.data;
+            const div = document.createElement("div");
+            div.className = "message-line";
+            div.textContent = typeof msg === 'object' ? JSON.stringify(msg, null, 2) : msg;
+            messageBox.innerHTML = "";
+            messageBox.appendChild(div);
+            messageBox.scrollTop = messageBox.scrollHeight;
+        }
 
-          tableBody.appendChild(tr);
-        });
-
-      } else if (parsed.type === "message") {
-        const msg = parsed.data;
-        const div = document.createElement("div");
-        div.className = "message-line";
-        div.textContent = typeof msg === 'object' ? JSON.stringify(msg, null, 2) : msg;
-        messageBox.innerHTML = "";
-        messageBox.appendChild(div);
-        messageBox.scrollTop = messageBox.scrollHeight;
-      } else if (parsed.type === "sell_result") {
-        // 매도 결과 처리
-        const result = parsed.data;
-        const div = document.createElement("div");
-        div.className = "message-line";
-        div.style.color = result.success ? "green" : "red";
-        div.textContent = `매도 결과: ${result.message}`;
-        messageBox.appendChild(div);
-        messageBox.scrollTop = messageBox.scrollHeight;
-      }
+        if (parsed.type === "sell_result") {
+            const result = parsed.data;
+            const div = document.createElement("div");
+            div.className = "message-line";
+            div.style.color = result.success ? "green" : "red";
+            div.textContent = `매도 결과: ${result.message}`;
+            messageBox.appendChild(div);
+            messageBox.scrollTop = messageBox.scrollHeight;
+        }
     };
 
     ws.onopen = function() {
-      console.log('웹소켓 연결됨');
+        console.log('웹소켓 연결됨');
     };
 
     ws.onerror = function(error) {
-      console.error('웹소켓 오류:', error);
+        console.error('웹소켓 오류:', error);
     };
 
     ws.onclose = function() {
-      console.log('웹소켓 연결 종료');
+        console.log('웹소켓 연결 종료');
     };
-
 </script>
 </body>
 </html>

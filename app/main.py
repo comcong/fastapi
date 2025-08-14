@@ -11,14 +11,11 @@ import kis_receiver
 from app.kis_invesment.kis_manager import kis
 import websocket_manager
 from app.db import kis_db
-# from app.kis_invesment import account_balance
 
 # templates 경로 설정
 PROJECT_ROOT = Path(__file__).parent.parent
 TEMPLATES_DIR = PROJECT_ROOT / "app/templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
-# d2_cash = account_balance.get_balance()
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
