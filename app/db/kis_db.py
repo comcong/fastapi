@@ -91,6 +91,25 @@ def upsert_data(data: list):
     ).execute()
     print("데이터 업데이트 성공:")
 
+def sync_data(data: list):
+    # 새 데이터의 key 목록 추출
+    new_keys = [d["매수_주문번호"] for d in data]
+
+    # 1️⃣ 새 데이터 덮어쓰기
+    supabase.table("transaction_info").upsert(
+        data,
+        on_conflict="매수_주문번호",
+        ignore_duplicates=False,
+        default_to_null=False
+    ).execute()
+
+    # 2️⃣ 새 데이터에 없는 기존 행 삭제
+    supabase.table("transaction_info") \
+        .delete() \
+        .filter("매수_주문번호", "not.in", f"({','.join(map(str, new_keys))})") \
+        .execute()
+
+
 # 테스트용
 def generate_order_id():
     number = random.randint(1, 999)  # 1부터 999까지

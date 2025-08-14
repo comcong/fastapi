@@ -32,7 +32,8 @@ async def lifespan(app: FastAPI):
         print("앱 종료전 kis_receiver.jango_df")
         print(kis_receiver.jango_df)
         # kis_db.insert_data(kis_receiver.jango_df.to_dict(orient="records"))
-        kis_db.upsert_data(kis_receiver.jango_df.to_dict(orient="records"))
+        # kis_db.upsert_data(kis_receiver.jango_df.to_dict(orient="records"))
+        kis_db.sync_data(kis_receiver.jango_df.to_dict(orient="records"))
 
 app = FastAPI(lifespan=lifespan)
 
@@ -61,9 +62,9 @@ async def websocket_endpoint(websocket: WebSocket):
             json_data = json.loads(fws_data)
             res = await kis.sell_stock(json_data['data'])
             if res:
-                sell_order_no, sell_order_price = res
-                print("매도 주문 응답 정상", sell_order_no, sell_order_price)
-                kis_receiver.jango_df.loc[kis_receiver.jango_df['매수_주문번호'] == json_data['data']['order_number'], ['매도_주문번호', '매도_주문가격']] = (sell_order_no, sell_order_price)
+                sell_order_no, sell_order_price, sell_order_qty = res
+                print("매도 주문 응답 정상", sell_order_no, sell_order_price, sell_order_qty)
+                kis_receiver.jango_df.loc[kis_receiver.jango_df['매수_주문번호'] == json_data['data']['order_number'], ['매도_주문번호', '매도_주문가격', '매도_주문수량']] = (sell_order_no, sell_order_price, sell_order_qty)
                 json_data = kis_receiver.jango_df.to_dict(orient="records")
                 data = {"type": "stock_data", "data": json_data}
                 await websocket_manager.manager.broadcast(json.dumps(data))

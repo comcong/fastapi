@@ -19,7 +19,7 @@ balance = ''
 async def start_kis_receiver():
     global jango_df
     global balance
-    col_names = ['매수_주문번호', '종목명', '종목코드', '체결시간', '주문수량', '체결수량', '체결단가', '현재가', '수익률', '매도_주문가격', '매도_주문번호']
+    col_names = ['매수_주문번호', '종목명', '종목코드', '체결시간', '주문수량', '체결수량', '체결단가', '현재가', '수익률', '매도_주문가격', '매도_주문수량', '체결량', '체결잔량', '매도_주문번호']
     jango_df = jango_db(col_names)
     balance = init_balance()
     code_list = jango_df['종목코드'].unique().tolist()  # DB 에서 종목코드 가져옴
@@ -65,11 +65,21 @@ async def start_kis_receiver():
                             await websocket_manager.manager.broadcast(json.dumps(balance_data))
 
                             jango_df = kis.sell_update(jango_df=jango_df, trans_df=trans_df)
-                        print(jango_df)
+                        print(jango_df.info())
                         print(jango_df.columns)
-                        jango_df = jango_df[col_names].sort_values(by='매수_주문번호').fillna('')
-                        cols = ['주문수량', '체결수량', '체결단가', '매도_주문가격']
-                        jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0'))
+                        for col in jango_df.columns:
+                            print('시리즈')
+                            print(jango_df[col])
+                            print()
+
+                        for col in jango_df.columns:
+                            types = jango_df[col].dropna().apply(type).unique()
+                            if len(types) > 1:
+                                print(f"{col} 컬럼에 섞인 타입 있음: {types}")
+
+                        jango_df = jango_df.sort_values(by='매수_주문번호').fillna('')
+                        # cols = ['주문수량', '체결수량', '체결단가', '매도_주문가격', '매도_주문수량', '매도_체결수량']
+                        jango_df[col_names] = jango_df[col_names].apply(lambda col: col.astype(str).str.lstrip('0'))
                         json_data = jango_df.to_dict(orient="records")
                         data = {"type": "stock_data", "data": json_data}
                         print('json_data', data)
@@ -138,6 +148,10 @@ def safe_for_json(d):
 
 
 def update_balance(jango_df, balance , sell_order_no, sell_qty, sell_price):
+    balance = int(balance)
+    sell_qty = int(sell_qty)
+    sell_price = int(sell_price)
+
     matched_rows = jango_df[jango_df['매도_주문번호'] == sell_order_no]        # jango_df 에서 매도_주문번호 행 찾기
 
     if matched_rows.empty:    # 매도_주문번호가 없으면 기존 잔고 반환
@@ -145,9 +159,9 @@ def update_balance(jango_df, balance , sell_order_no, sell_qty, sell_price):
         return balance
 
     purchase_price = int(matched_rows.at[0, '체결단가'])        # 매입단가
-    purchase_cost_reduction = int(sell_qty) * purchase_price   # 매입금액
+    purchase_cost_reduction = sell_qty * purchase_price   # 매입금액
     sell_revenue = sell_qty * sell_price   # 매도 체결 금액
-    updated_balance = balance - purchase_cost_reduction + sell_revenue  # 잔고 업데이트
+    updated_balance = str(balance - purchase_cost_reduction + sell_revenue)  # 잔고 업데이트
     return updated_balance
 
 def init_balance():

@@ -160,16 +160,23 @@ class kis_api:
                 idx = jango_df[jango_df['매수_주문번호'] == buy_ord_num].index[0] # 기존 주문번호가 있는 행번호 가져오기
 
                 # 수량 차감 (int로 변환 주의)
-                기존_수량 = int(jango_df.at[idx, '체결수량'])
-                print('기존수량', 기존_수량)
-                매도_수량 = int(trans_df['체결수량'][0])
-                print('매도_수량', 매도_수량)
-                새로운_수량 = (기존_수량 - 매도_수량)
-                print('새로운_수량', 새로운_수량)
-                jango_df.at[idx, '체결수량'] = str(새로운_수량)
+                주문수량 = int(jango_df.at[idx, '매도_주문수량'])
+                print('주문수량', 주문수량)
+                체결수량 = int(trans_df['체결수량'][0])
+                print('매도_수량', 체결수량)
 
-                if 새로운_수량 == 0:         # 수량이 모두 없어지면 행 제거
-                    print('새로운_수량 == 0')
+                if jango_df.at[idx, '체결량'] == '':
+                    누적체결량 = 0
+                else:
+                    누적체결량 = int(jango_df.at[idx, '체결량'])
+                누적체결량 += 체결수량
+                잔량 = 주문수량 - 누적체결량
+                print('잔량', 잔량)
+                jango_df.at[idx, '체결잔량'] = str(잔량)
+                jango_df.at[idx, '체결량'] = str(누적체결량)
+
+                if 누적체결량 == 주문수량:         # 전부 체결되면 행 제거
+                    print('전부체결')
                     jango_df.drop(index=idx, inplace=True)
                     return jango_df
 
@@ -272,7 +279,7 @@ class kis_api:
                 output = res_data.get("output")
                 sell_order_no =  output.get("ODNO")  # 매도 주문번호 받아오기
                 self.__sell_to_buy_order_map[sell_order_no] = buy_order_no  # {매도주문번호 : 매수주문번호} 맵핑
-                return [sell_order_no, price]
+                return [sell_order_no, price, qty]
 
             else:
                 print(f"[매도 주문 실패] {res_data}")
