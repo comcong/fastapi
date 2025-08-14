@@ -27,7 +27,9 @@ async def lifespan(app: FastAPI):
         await task
     except asyncio.CancelledError:
         pass
-    # if not kis_receiver.jango_df.empty:
+    except Exception as e:
+        print("백그라운드 task 에러:", e)
+
     print("앱 종료전 kis_receiver.jango_df")
     print(kis_receiver.jango_df)
     kis_db.delete_data()

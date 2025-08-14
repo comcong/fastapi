@@ -91,8 +91,6 @@ async def start_kis_receiver():
                     await websocket_manager.manager.broadcast(json.dumps(msg_data))
                     print('json 전송완료')
 
-
-
             except Exception as e:
                 print("웹소켓 수신 오류: 1", e)
                 traceback.print_exc()
