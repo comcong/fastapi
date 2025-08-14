@@ -27,13 +27,11 @@ async def lifespan(app: FastAPI):
         await task
     except asyncio.CancelledError:
         pass
-    if not kis_receiver.jango_df.empty:
-        # kis_db.delete_data()
-        print("앱 종료전 kis_receiver.jango_df")
-        print(kis_receiver.jango_df)
-        # kis_db.insert_data(kis_receiver.jango_df.to_dict(orient="records"))
-        # kis_db.upsert_data(kis_receiver.jango_df.to_dict(orient="records"))
-        kis_db.sync_data(kis_receiver.jango_df.to_dict(orient="records"))
+    # if not kis_receiver.jango_df.empty:
+    print("앱 종료전 kis_receiver.jango_df")
+    print(kis_receiver.jango_df)
+    kis_db.delete_data()
+    kis_db.insert_data(kis_receiver.jango_df.to_dict(orient="records"))
 
 app = FastAPI(lifespan=lifespan)
 

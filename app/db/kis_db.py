@@ -51,25 +51,19 @@ def get_data():
         return None
 
 def insert_data(data):
-    print('insert_data()')
-    print(data)
     try:
         for i in data:
-            i["actor"] = "server:fastapi"  # 또는 원하는 구분값
             supabase.table("transaction_info").insert(i).execute()
         print("데이터 삽입 성공")
-
     except Exception as e:
         print("데이터 삽입 실패:", e)
 
 def delete_data():
     try:
-        print(f"[delete_data ENTER] pid={os.getpid()} at={dt.datetime.now().isoformat()}", flush=True)
-        print("stack:\n" + "".join(traceback.format_stack(limit=6)), flush=True)
         supabase.table("transaction_info").delete().neq("매수_주문번호", None).execute()
-        print("[데이터 삭제 성공]", flush=True)
+        print("데이터 삭제 성공")
     except Exception as e:
-        print("데이터 삭제 실패:", e, flush=True)
+        print("데이터 삭제 실패:", e)
 
 def update_data(data: list):
     print(data)
@@ -91,37 +85,11 @@ def upsert_data(data: list):
     ).execute()
     print("데이터 업데이트 성공:")
 
-def sync_data(data: list):
-    # 새 데이터의 key 목록 추출
-    new_keys = [d["매수_주문번호"] for d in data]
-
-    # 1️⃣ 새 데이터 덮어쓰기
-    supabase.table("transaction_info").upsert(
-        data,
-        on_conflict="매수_주문번호",
-        ignore_duplicates=False,
-        default_to_null=False
-    ).execute()
-
-    # 2️⃣ 새 데이터에 없는 기존 행 삭제
-    supabase.table("transaction_info") \
-        .delete() \
-        .filter("매수_주문번호", "not.in", f"({','.join(map(str, new_keys))})") \
-        .execute()
-
 
 # 테스트용
 def generate_order_id():
     number = random.randint(1, 999)  # 1부터 999까지
     return f"ORD{number:03d}"  # 3자리로 포맷팅 (예: 1 → 001)
-
-def log():
-    # select logged_at, action, actor, user_id, client_ip,
-    #       old_row->>'매수_주문번호' as 매수_주문번호
-    # from audit.audit_log
-    # where table_name='transaction_info' and action='DELETE'
-    # order by id desc limit 50;
-    pass
 
 
 if __name__ == '__main__':
