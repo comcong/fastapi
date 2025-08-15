@@ -67,7 +67,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 sell_order_no, sell_order_price, sell_order_qty = res
                 print("매도 주문 응답 정상", sell_order_no, sell_order_price, sell_order_qty)
                 kis_receiver.jango_df.loc[kis_receiver.jango_df['매수_주문번호'] == json_data['data']['order_number'], ['매도_주문번호', '매도_주문가격', '매도_주문수량']] = (sell_order_no, sell_order_price, sell_order_qty)
-                json_data = kis_receiver.jango_df.to_dict(orient="records")
+                json_data = kis_receiver.jango_df.drop(columns='체결량').to_dict(orient="records")
                 data = {"type": "stock_data", "data": json_data}
                 await websocket_manager.manager.broadcast(json.dumps(data))
 
