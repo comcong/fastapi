@@ -111,9 +111,7 @@
                 <th>체결잔량</th>
                 <th>매도_주문번호</th>
                 <th>매도</th>
-<!--["매수_주문번호", "종목명", "종목코드", "체결시간", "주문수량", "체결수량", "체결단가", "현재가", "수익률", "매도_주문가격", "매도_주문수량", "체결잔량", "매도_주문번호"]-->
-<!--['매수_주문번호', '종목명', '종목코드', '체결시간', '주문수량', '체결수량', '체결단가', '현재가', '수익률', '매도_주문가격', '매도_주문수량', '체결량', '체결잔량', '매도_주문번호']-->
-            </tr>
+          </tr>
         </thead>
         <tbody></tbody>
     </table>
@@ -121,15 +119,17 @@
     <h1>메시지 로그</h1>
     <div id="messages"></div>
 
- <script>
-// 현재 페이지가 HTTPS이면 wss, 아니면 ws 사용
-const protocol = location.protocol === "https:" ? "wss" : "ws";
-// WebSocket 서버 연결 생성
-const ws = new WebSocket(`${protocol}://${location.host}/ws`);
+
+
+
+<script>
+
+const protocol = location.protocol === "https:" ? "wss" : "ws";     // 현재 페이지가 HTTPS이면 wss, 아니면 ws 사용
+const ws = new WebSocket(`${protocol}://${location.host}/ws`);      // WebSocket 서버 연결 생성
 
 // 테이블 tbody와 메시지 박스 DOM 참조
-const tableBody = document.querySelector("#data_table tbody");
-const messageBox = document.getElementById("messages");
+const tableBody = document.querySelector("#data_table tbody");     // HTML 문서에서 id가 "data_table"인 테이블의 <tbody> 요소를 선택
+const messageBox = document.getElementById("messages");            // HTML 문서에서 id가 "messages"인 div 요소를 선택
 
 // 이미 매도한 주문번호를 localStorage에서 불러와 Set으로 관리
 let soldOrderNumbers = new Set(JSON.parse(localStorage.getItem('soldOrderNumbers') || '[]'));
@@ -202,6 +202,9 @@ function handleSellClick(orderNumber, stockCode, stockName, quantity, currentPri
 
     console.log('매도 요청 전송:', sellRequest);
 }
+
+
+
 
 // WebSocket으로 메시지 수신 시 처리
 ws.onmessage = function(event) {
