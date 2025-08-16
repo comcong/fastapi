@@ -1,0 +1,131 @@
+<!--study.html-->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>실시간 체결 통보</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        th, td {
+            border: 1px solid #aaa;
+            padding: 8px;
+            text-align: center;
+        }
+
+        th {
+            background-color: #eee;
+        }
+
+        #messages {
+            margin-top: 20px;
+            padding: 10px;
+            background: #f9f9f9;
+            border: 1px solid #ccc;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .message-line {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>잔고 내역</h1>
+    <table id="data_table">
+        <thead>
+            <tr>
+                <th>주문번호</th>
+                <th>종목명</th>
+                <th>종목코드</th>
+                <th>체결시간</th>
+                <th>주문수량</th>
+                <th>체결수량</th>
+                <th>체결단가</th>
+                <th>현재가</th>
+                <th>수익률</th>
+
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <h1>메시지 로그</h1>
+    <div id="messages"></div>
+
+    <script>
+    const protocol = location.protocol === "https:" ? "wss" : "ws";
+    const ws = new WebSocket(`${protocol}://${location.host}/ws`);
+
+    const tableBody = document.querySelector("#data_table tbody");
+    const messageBox = document.getElementById("messages");
+
+    // 체결시간 문자열을 "HHMMSS" → "HH:MM:SS" 형식으로 변환
+    function formatTimeString(hhmmss) {
+        if (typeof hhmmss !== 'string' || hhmmss.length !== 6) return hhmmss;
+        return hhmmss.slice(0, 2) + ':' + hhmmss.slice(2, 4) + ':' + hhmmss.slice(4, 6);
+    }
+
+    ws.onmessage = function(event) {
+        const parsed = JSON.parse(event.data);
+        if (parsed.type === "stock_data") {
+            const data = parsed.data;
+
+            // 테이블 본문 비우기
+            tableBody.innerHTML = "";
+
+            if (!data || data.length === 0) {
+                const tr = document.createElement("tr");
+                const td = document.createElement("td");
+                td.colSpan = 9;
+                td.textContent = "데이터가 없습니다.";
+                td.style.fontStyle = "italic";
+                tr.appendChild(td);
+                tableBody.appendChild(tr);
+                return;
+            }
+
+            // 데이터가 있는 경우 테이블 업데이트
+            data.forEach(row => {
+                const tr = document.createElement("tr");
+                const keys = ["주문번호", "종목명", "종목코드", "체결시간", "주문수량", "체결수량", "체결단가", "현재가", "수익률"];
+                keys.forEach(key => {
+                    const td = document.createElement("td");
+                    let value = row[key] || "";
+
+                    // 체결시간 포맷 적용
+                    if (key === "체결시간") {
+                        value = formatTimeString(value);
+                    }
+
+                    td.textContent = value;
+                    tr.appendChild(td);
+                });
+                tableBody.appendChild(tr);
+            });
+
+        } else if (parsed.type === "message") {
+            const msg = parsed.data;
+            const div = document.createElement("div");
+            div.className = "message-line";
+            div.textContent = typeof msg === 'object' ? JSON.stringify(msg, null, 2) : msg;
+            messageBox.innerHTML = "";
+            messageBox.appendChild(div);
+            messageBox.scrollTop = messageBox.scrollHeight;
+        }
+    };
+</script>
+
+</body>
+</html>

@@ -13,8 +13,8 @@ import websocket_manager
 from app.db import kis_db
 
 # templates 경로 설정
-PROJECT_ROOT = Path(__file__).parent.parent
-TEMPLATES_DIR = PROJECT_ROOT / "app/templates"
+PROJECT_ROOT = Path(__file__).parent
+TEMPLATES_DIR = PROJECT_ROOT / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 @asynccontextmanager
@@ -43,7 +43,7 @@ app = FastAPI(lifespan=lifespan)
 async def transaction(request: Request):
     print('balance', kis_receiver.init_balance())
     return templates.TemplateResponse(
-        "test.html",
+        "index.html",
         {
             "request": request,
             "balance": kis_receiver.balance,
