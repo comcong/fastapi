@@ -32,15 +32,20 @@ async def websocket_endpoint(websocket: WebSocket):
                 "B": np.random.randint(0, 100, 5),
                 "C": np.random.randint(0, 100, 5)
             })
+            df['수익률'] = np.random.uniform(-10, 10, size=len(df)).round(2)
 
-            html_table = df.to_html(index=False)
-            tbody_content = html_table.split("<tbody>")[1].split("</tbody>")[0]
-            html = f'<tbody id="table-body" hx-swap-oob="innerHTML">{tbody_content}</tbody>'
-            await websocket.send_text(html)
+            table_html = dftohtml(df)
+            await websocket.send_text(table_html)
 
     except Exception as e:
         print("웹소켓 연결 종료:", e)
 
+
+def dftohtml(df):
+    html_table = df.to_html(index=False)
+    tbody_content = html_table.split("<tbody>")[1].split("</tbody>")[0]
+    html = f'<tbody id="table-body" hx-swap-oob="innerHTML">{tbody_content}</tbody>'
+    return html
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

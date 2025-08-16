@@ -54,13 +54,32 @@
 <table id="data-table">
     <thead id="table-head">
     <!-- 고정 컬럼 -->
-    <tr> <th>A</th><th>B</th><th>C</th> </tr>
+    <tr>    <th>A</th><th>B</th><th>C</th><th>수익률</th>    </tr>
     </thead>
 
   <tbody id="table-body">
-        <tr>  <td></td><td></td><td></td>  </tr>
+        <tr>  <td></td><td></td><td></td><td></td>  </tr>
   </tbody>
 </table>
+
+
+<script>
+  const ws = new WebSocket("ws://localhost:8000/ws");
+
+  ws.onmessage = (event) => {
+    document.getElementById("table-body").outerHTML = event.data;
+
+    // 수익률 컬럼 색상 적용 (마지막 열)
+    document.querySelectorAll("#table-body tr").forEach(tr => {
+      const td = tr.lastElementChild; // 수익률 컬럼
+      const value = parseFloat(td.textContent);
+      if (value > 0) td.style.color = "red";
+      else if (value < 0) td.style.color = "blue";
+      else td.style.color = "black"; // 0인 경우
+    });
+  };
+</script>
+
 
 </body>
 </html>
