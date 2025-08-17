@@ -211,69 +211,73 @@ ws.onmessage = function(event) {
     const parsed = JSON.parse(event.data); // JSON 파싱
 
     // 잔고 업데이트
-    if (parsed.type === "balance") {
-        const el = document.getElementById('balance_value');
-        if (el) el.textContent = formatNumber(parsed.data);
-        return;
+    if (parsed.type === "balance") {                             // 서버에서 받은 메시지 타입이 "balance"(잔고 정보)인지 확인
+        const el = document.getElementById('balance_value');     // HTML에서 id="balance_value"인 요소 가져오기
+        if (el) el.textContent = formatNumber(parsed.data);      // 요소가 존재하는지 확인 (null 방지) 하여 // 가져온 데이터를 숫자 포맷팅 후 DOM의 텍스트로 업데이트
+        return;                                                  // balance 처리 후 함수 종료
     }
 
-    // 체결시 반환 데이터
-    if (parsed.type === "stock_data") {   //  stock_data
-        const data = parsed.data;         // 수신된 체결데이터 배열로 저장
-        tableBody.innerHTML = "";         // 기존 테이블 초기화
+
+    // 테이블 업데이트
+    if (parsed.type === "stock_data") {                      // 서버에서 받은 메시지 타입이 "stock_data"(체결 데이터)인지 확인
+        const data = parsed.data;                            // 수신된 체결 데이터 배열을 data 변수에 저장
+        tableBody.innerHTML = "";                            // 기존 테이블 내용을 모두 비워 초기화
 
         // 데이터가 없으면 "데이터가 없습니다" 표시
-        if (!data || data.length === 0) {
-            const tr = document.createElement("tr");
-            const td = document.createElement("td");
-            td.colSpan = data.length;       // 14
-            td.textContent = "데이터가 없습니다.";
-            td.style.fontStyle = "italic";
-            tr.appendChild(td);
-            tableBody.appendChild(tr);
-            return;
+        if (!data || data.length === 0) {                    // data가 비었거나 null/undefined일 경우
+            const tr = document.createElement("tr");         // <tr> 행 요소 생성
+            const td = document.createElement("td");         // <td> 셀 요소 생성
+            td.colSpan = data.length;       // 14            // 테이블 컬럼 개수만큼 병합 (여기서는 14)
+            td.textContent = "데이터가 없습니다.";              // 셀에 메시지 텍스트 삽입
+            td.style.fontStyle = "italic";                   // 폰트를 이탤릭체로 지정
+            tr.appendChild(td);                              // <td>를 <tr> 안에 추가
+            tableBody.appendChild(tr);                       // <tr>를 테이블 본문에 추가
+            return;                                          // 이후 로직은 실행하지 않고 종료
         }
 
         // 데이터 행 생성
-        data.forEach(row => {
-            const tr = document.createElement("tr");
-            const keys = ["매수_주문번호", "종목명", "종목코드", "체결시간", "주문수량", "체결수량", "체결단가", "현재가", "수익률", "매도_주문가격", "매도_주문수량", "체결잔량", "매도_주문번호"];
+        data.forEach(row => {                                 // data 배열 돌면서 <tr>행 생성
+        const tr = document.createElement("tr");              // <tr>행 생성
 
-            // 각 컬럼 생성
-            keys.forEach(key => {
-                const td = document.createElement("td");
-                let value = row[key] || "";
-                if (key === "체결시간") {
-                    value = formatTimeString(value); // 시간 포맷
-                }
-                if (key === "수익률") {
-                    td.className = getProfitClass(value); // 수익률 색상
-                    if (value) value = value + '%';
-                }
-                td.textContent = value;
-                tr.appendChild(td);
-            });
+        // 테이블에 표시할 데이터 key 순서 정의
+        const keys = ["매수_주문번호", "종목명", "종목코드", "체결시간", "주문수량", "체결수량", "체결단가", "현재가", "수익률", "매도_주문가격", "매도_주문수량", "체결잔량", "매도_주문번호"];
 
-            // 매도 버튼 컬럼 생성
-            const sellTd = document.createElement("td");
-            const sellButton = document.createElement("button");
-            sellButton.className = "sell-button";
-            // 이미 매도한 주문이면 "정정", 아니면 "매도"
-            sellButton.textContent = soldOrderNumbers.has(row["매수_주문번호"]) ? "정정" : "매도";
-            sellButton.onclick = function() {
-                handleSellClick(
-                    row["매수_주문번호"],
-                    row["종목코드"],
-                    row["종목명"],
-                    row["체결수량"],
-                    row["현재가"],
-                    this
-                );
-            };
-            sellTd.appendChild(sellButton);
-            tr.appendChild(sellTd);
 
-            tableBody.appendChild(tr);
+        // 각 컬럼 생성
+        keys.forEach(key => {                        // keys 배열을 돌면서 각 <td> 셀 생성
+        const td = document.createElement("td");     // <td> 셀 생성
+        let value = row[key] || "";                  // 현재 row에서 해당 key 값 가져오기 (없으면 빈 문자열)
+        if (key === "체결시간") {                     // 만약 컬럼이 "체결시간"이면
+            value = formatTimeString(value);         // 시간 포맷팅 함수 적용
+        }
+        if (key === "수익률") {                      // 만약 컬럼이 "수익률"이면
+            td.className = getProfitClass(value);    // 수익률 값에 따라 class 지정 (양수/음수 색상)
+            if (value) value = value + '%';          // 값이 있으면 % 붙이기
+        }
+        td.textContent = value;                      // 가공된 값을 셀 텍스트로 넣기
+        tr.appendChild(td);                          // <td>를 <tr>에 추가
+        });
+
+        // 매도 버튼 컬럼 생성
+        const sellTd = document.createElement("td");             // 매도 버튼을 담을 <td> 셀 생성
+        const sellButton = document.createElement("button");    // <button> 요소 생성
+        sellButton.className = "sell-button";                   // 버튼에 CSS 클래스 지정
+        // 이미 매도한 주문이면 "정정", 아니면 "매도" 버튼 표시
+        sellButton.textContent = soldOrderNumbers.has(row["매수_주문번호"]) ? "정정" : "매도";
+        sellButton.onclick = function() {                     // 버튼 클릭 시 실행할 이벤트 핸들러 등록
+            handleSellClick(
+                row["매수_주문번호"],                           // 매수 주문번호
+                row["종목코드"],                               // 종목코드
+                row["종목명"],                                // 종목명
+                row["체결수량"],                               // 체결수량
+                row["현재가"],                                // 현재가
+                this                                         // 클릭된 버튼 자신
+            );
+        };
+        sellTd.appendChild(sellButton);                  // 버튼을 <td> 안에 추가
+        tr.appendChild(sellTd);                          // <td>를 <tr>에 추가
+
+        tableBody.appendChild(tr);                       // 완성된 <tr>를 테이블 본문에 추가
         });
     }
 
@@ -283,9 +287,9 @@ ws.onmessage = function(event) {
         const div = document.createElement("div");
         div.className = "message-line";
         div.textContent = typeof msg === 'object' ? JSON.stringify(msg, null, 2) : msg;
-        messageBox.innerHTML = ""; // 기존 로그 초기화
+        messageBox.innerHTML = "";                                 // 기존 로그 초기화
         messageBox.appendChild(div);
-        messageBox.scrollTop = messageBox.scrollHeight; // 스크롤 맨 아래
+        messageBox.scrollTop = messageBox.scrollHeight;            // 스크롤 맨 아래
     }
 
     // 매도 주문시 반환 데이터
@@ -293,7 +297,7 @@ ws.onmessage = function(event) {
         const result = parsed.data;
         const div = document.createElement("div");
         div.className = "message-line";
-        div.style.color = result.success ? "green" : "red"; // 성공/실패 색상
+        div.style.color = result.success ? "green" : "red";            // 성공/실패 색상
         div.textContent = `매도 결과: ${result.message}`;
         messageBox.appendChild(div);
         messageBox.scrollTop = messageBox.scrollHeight;
