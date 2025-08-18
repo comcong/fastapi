@@ -250,13 +250,20 @@ ws.onmessage = function(event) {
         if (key === "체결시간") {                     // 만약 컬럼이 "체결시간"이면
             value = formatTimeString(value);         // 시간 포맷팅 함수 적용
         }
-        if (key === "수익률") {                      // 만약 컬럼이 "수익률"이면
-            td.className = getProfitClass(value);    // 수익률 값에 따라 class 지정 (양수/음수 색상)
-            if (value) value = value + '%';          // 값이 있으면 % 붙이기
-        }
-        td.textContent = value;                      // 가공된 값을 셀 텍스트로 넣기
-        tr.appendChild(td);                          // <td>를 <tr>에 추가
+
+        if (key === "수익률") {                                     // 만약 컬럼이 "수익률"이면
+            td.className = getProfitClass(value);                  // 수익률 값에 따라 class 지정 (양수/음수 색상)
+            if (value) {                                           // 값이 있으면
+                const num = parseFloat(value);                     // 문자열 → 숫자 변환
+                if (!isNaN(num)) {                                 // 숫자로 변환이 되면
+                    value = num.toFixed(2) + '%';                  // 소수점 둘째 자리까지 고정 + %
+                    }
+                }
+            }
+            td.textContent = value;
+            tr.appendChild(td);
         });
+
 
         // 매도 버튼 컬럼 생성
         const sellTd = document.createElement("td");             // 매도 버튼을 담을 <td> 셀 생성
