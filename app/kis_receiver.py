@@ -70,15 +70,6 @@ async def start_kis_receiver():
                                 jango_df = kis.sell_update(jango_df=jango_df, trans_df=trans_df)
                             print(jango_df.info())
                             print(jango_df.columns)
-                            # for col in jango_df.columns:
-                            #     print('시리즈')
-                            #     print(jango_df[col])
-                            #     print()
-                            #
-                            # for col in jango_df.columns:
-                            #     types = jango_df[col].dropna().apply(type).unique()
-                            #     if len(types) > 1:
-                            #         print(f"{col} 컬럼에 섞인 타입 있음: {types}")
 
                             jango_df = jango_df.sort_values(by='매수_주문번호').fillna('')
                             # cols = ['주문수량', '체결수량', '체결단가', '매도_주문가격', '매도_주문수량', '매도_체결수량']
