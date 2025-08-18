@@ -227,7 +227,7 @@ ws.onmessage = function(event) {
         if (!data || data.length === 0) {                    // data가 비었거나 null/undefined일 경우
             const tr = document.createElement("tr");         // <tr> 행 요소 생성
             const td = document.createElement("td");         // <td> 셀 요소 생성
-            td.colSpan = data.length;       // 14            // 테이블 컬럼 개수만큼 병합 (여기서는 14)
+            td.colSpan = 14;       // 14                     // 테이블 컬럼 개수만큼 병합 (여기서는 14)
             td.textContent = "데이터가 없습니다.";              // 셀에 메시지 텍스트 삽입
             td.style.fontStyle = "italic";                   // 폰트를 이탤릭체로 지정
             tr.appendChild(td);                              // <td>를 <tr> 안에 추가

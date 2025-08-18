@@ -63,13 +63,15 @@ async def start_kis_receiver():
                                 jango_df = await kis.buy_update(ws=ws, jango_df=jango_df, trans_df=trans_df)
 
                             elif trans_df['매도매수구분'].values[0] == '01':    # 01: 매도, 02: 매수
+                                print('체결통보')
+                                print('체결수량:  ', trans_df.at[0, '체결수량'])
                                 balance = update_balance(jango_df, balance, trans_df.at[0, '주문번호'], trans_df.at[0, '체결수량'], trans_df.at[0, '체결단가'])
                                 balance_data = {"type": "balance", "data": balance}
                                 await websocket_manager.manager.broadcast(json.dumps(balance_data))
 
                                 jango_df = kis.sell_update(jango_df=jango_df, trans_df=trans_df)
-                            print(jango_df.info())
-                            print(jango_df.columns)
+                            # print(jango_df.info())
+                            # print(jango_df.columns)
 
                             jango_df = jango_df.sort_values(by='매수_주문번호').fillna('')
                             # cols = ['주문수량', '체결수량', '체결단가', '매도_주문가격', '매도_주문수량', '매도_체결수량']
@@ -145,6 +147,9 @@ def safe_for_json(d):
 
 
 def update_balance(jango_df, balance , sell_order_no, sell_qty, sell_price):
+    print('update_balance() 실행')
+    fee_rate = 0.00015
+    tax_rate = 0.0015
     balance = int(balance)
     sell_qty = int(sell_qty)
     sell_price = int(sell_price)
@@ -157,7 +162,7 @@ def update_balance(jango_df, balance , sell_order_no, sell_qty, sell_price):
 
     purchase_price = int(matched_rows.at[0, '체결단가'])        # 매입단가
     purchase_cost_reduction = sell_qty * purchase_price   # 매입금액
-    sell_revenue = sell_qty * sell_price   # 매도 체결 금액
+    sell_revenue = sell_qty * sell_price * (1 - tax_rate)  # 매도 체결 금액
     updated_balance = str(balance - purchase_cost_reduction + sell_revenue)  # 잔고 업데이트
     return updated_balance
 
