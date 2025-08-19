@@ -118,8 +118,10 @@ async def send_initial_data(websocket):
 
 def update_jango_df(df: pd.DataFrame = None) -> pd.DataFrame:
     print('update_jango_df 실행')
+    print('df: ', df)
     global jango_df  # 실시간 현재가 데이터 전역변수 사용
     if df is None:
+        print('비어있는 데이터프레임')
         return jango_df
     else:
         jango_df = pd.merge(jango_df, df, on='종목코드', how='left')  # 병합
@@ -127,19 +129,27 @@ def update_jango_df(df: pd.DataFrame = None) -> pd.DataFrame:
         jango_df = jango_df.drop(columns=['새현재가'])
 
         fee_rate = 0.00015
-        tax_rate = 0.002
+        tax_rate = 0.0015
         매수가 = jango_df['체결단가'].astype(int)
-        매수_수수료 = 매수가 * fee_rate
-        실제_매수금액 = 매수가 + 매수_수수료
-
-        print('중간1')
-
+        print('매수가: ', 매수가)
         매도가 = jango_df['현재가'].astype(int)
+        print('매도가: ', 매도가)
+        매수_수수료 = 매수가 * fee_rate
+        print('매수_수수료: ', 매수_수수료)
         매도_수수료 = 매도가 * fee_rate
+        print('매도_수수료: ', 매도_수수료)
+        실제_매수금액 = 매수가 + 매수_수수료
+        print('실제_매수금액: ', 실제_매수금액)
         세금 = 매도가 * tax_rate
+        print('세금: ', 세금)
         실제_매도금액 = 매도가 - 매도_수수료 - 세금
-        print('중간2')
-        jango_df['수익률'] = round(((실제_매도금액 - 실제_매수금액) / 실제_매수금액) * 100, 2).astype(str)
+        print('실제_매도금액: ', 실제_매도금액)
+
+        수익률 = round((매도가 - 매수가 - 매수_수수료 - 매도_수수료 - 세금) / 매수가 * 100, 2)
+        jango_df['수익률'] = 수익률.astype(str)
+
+        # jango_df['수익률'] = round(((실제_매도금액 - 실제_매수금액) / 실제_매수금액) * 100, 2).astype(str)
+        print("jango_df['수익률']: ", jango_df['수익률'])
         print('update_jango_df 종료')
 
         return jango_df
