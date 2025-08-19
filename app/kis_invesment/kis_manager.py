@@ -178,12 +178,14 @@ class kis_api:
                 jango_df.at[idx, '체결잔량'] = str(잔량)
                 jango_df.at[idx, '체결량'] = str(누적체결량)
 
-                수수료 = 0.015
+                수수료 = 0
                 self.__d2_cash = int(d2_cash)
                 매수가 = int(jango_df.at[idx, '체결단가'])
                 매도가 = int(jango_df.at[idx, '매도_주문가격'])
                 수량 = int(jango_df.at[idx, '체결량'])
-                순이익 = (매도가 - 매수가) * 수량
+                매수수수료 = 매수가 * 수량 * 수수료
+                매도수수료 = 매도가 * 수량 * 수수료
+                순이익 = (매도가 - 매수가) * 수량 - 매수수수료 - 매도수수료
                 self.__d2_cash += 순이익
                 print('self.__d2_cash', self.__d2_cash)
                 balance_data = {"type": "balance", "data": self.__d2_cash}

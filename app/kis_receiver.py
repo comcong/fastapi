@@ -46,9 +46,10 @@ async def start_kis_receiver():
                             print('tr_id == "H0STCNT0":')
 
                             jango_df = update_jango_df(data[['종목코드', '새현재가']].copy())
-                            jango_df = jango_df
+                            print('추적1')
                             cols = ['주문수량', '체결수량', '체결단가', '매도_주문가격']
                             jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0'))
+                            print('추적2')
                             json_data = jango_df.drop(columns='체결량').to_dict(orient="records")
                             data = {"type": "stock_data", "data": json_data}
                             print('json_data', data)
@@ -75,7 +76,9 @@ async def start_kis_receiver():
 
                             jango_df = jango_df.sort_values(by='매수_주문번호').fillna('')
                             # cols = ['주문수량', '체결수량', '체결단가', '매도_주문가격', '매도_주문수량', '매도_체결수량']
-                            jango_df = jango_df.apply(lambda col: col.astype(str).str.lstrip('0'))
+                            # jango_df = jango_df.apply(lambda col: col.astype(str).str.lstrip('0'))
+                            cols = ['주문수량', '체결수량', '체결단가', '매도_주문가격']
+                            jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0'))
                             json_data = jango_df.drop(columns='체결량').to_dict(orient="records")
                             data = {"type": "stock_data", "data": json_data}
                             print('json_data', data)
@@ -114,6 +117,7 @@ async def send_initial_data(websocket):
     await websocket.send_text(json.dumps(stock_data))
 
 def update_jango_df(df: pd.DataFrame = None) -> pd.DataFrame:
+    print('update_jango_df 실행')
     global jango_df  # 실시간 현재가 데이터 전역변수 사용
     if df is None:
         return jango_df
@@ -128,13 +132,15 @@ def update_jango_df(df: pd.DataFrame = None) -> pd.DataFrame:
         매수_수수료 = 매수가 * fee_rate
         실제_매수금액 = 매수가 + 매수_수수료
 
+        print('중간1')
+
         매도가 = jango_df['현재가'].astype(int)
         매도_수수료 = 매도가 * fee_rate
         세금 = 매도가 * tax_rate
         실제_매도금액 = 매도가 - 매도_수수료 - 세금
-
+        print('중간2')
         jango_df['수익률'] = round(((실제_매도금액 - 실제_매수금액) / 실제_매수금액) * 100, 2).astype(str)
-
+        print('update_jango_df 종료')
 
         return jango_df
 
