@@ -14,14 +14,14 @@ from app.kis_invesment import account_balance
 
 jango_df: pd.DataFrame = pd.DataFrame()
 d2_cash = account_balance.get_balance()
-balance = ''
+# balance = ''
 
 async def start_kis_receiver():
     global jango_df
-    global balance
+    # global balance
     col_names = ['매수_주문번호', '종목명', '종목코드', '체결시간', '주문수량', '체결수량', '체결단가', '현재가', '수익률', '매도_주문가격', '매도_주문수량', '체결량', '체결잔량', '매도_주문번호']
     jango_df = jango_db(col_names)
-    balance = init_balance()
+    # balance = init_balance()
     code_list = jango_df['종목코드'].unique().tolist()  # DB 에서 종목코드 가져옴
 
 
@@ -65,11 +65,11 @@ async def start_kis_receiver():
                             elif trans_df['매도매수구분'].values[0] == '01':    # 01: 매도, 02: 매수
                                 print('체결통보')
                                 print('체결수량:  ', trans_df.at[0, '체결수량'])
-                                balance = update_balance(jango_df, balance, trans_df.at[0, '주문번호'], trans_df.at[0, '체결수량'], trans_df.at[0, '체결단가'])
-                                balance_data = {"type": "balance", "data": balance}
-                                await websocket_manager.manager.broadcast(json.dumps(balance_data))
+                                # balance = update_balance(jango_df, balance, trans_df.at[0, '주문번호'], trans_df.at[0, '체결수량'], trans_df.at[0, '체결단가'])
+                                # balance_data = {"type": "balance", "data": balance}
+                                # await websocket_manager.manager.broadcast(json.dumps(balance_data))
 
-                                jango_df = kis.sell_update(jango_df=jango_df, trans_df=trans_df)
+                                jango_df = await kis.sell_update(jango_df=jango_df, trans_df=trans_df, d2_cash=d2_cash)
                             # print(jango_df.info())
                             # print(jango_df.columns)
 
@@ -166,7 +166,7 @@ def update_balance(jango_df, balance , sell_order_no, sell_qty, sell_price):
     updated_balance = str(balance - purchase_cost_reduction + sell_revenue)  # 잔고 업데이트
     return updated_balance
 
-def init_balance():
-    매입금액_총합 = (jango_df['체결수량'].astype(int) * jango_df['체결단가'].astype(int)).sum()
-    balance = str(int(d2_cash) + 매입금액_총합)  # 초기 잔고
-    return balance
+# def init_balance():
+#     매입금액_총합 = (jango_df['체결수량'].astype(int) * jango_df['체결단가'].astype(int)).sum()
+#     balance = str(int(d2_cash))  # 초기 잔고
+#     return balance

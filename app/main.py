@@ -41,12 +41,12 @@ app = FastAPI(lifespan=lifespan)
 
 @app.get("/")
 async def transaction(request: Request):
-    print('balance', kis_receiver.init_balance())
+    print('balance', kis_receiver.d2_cash)
     return templates.TemplateResponse(
         "index.html",
         {
             "request": request,
-            "balance": kis_receiver.balance,
+            "balance": kis_receiver.d2_cash,
         }
     )
 

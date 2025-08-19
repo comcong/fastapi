@@ -5,9 +5,11 @@ from base64 import b64decode
 import pandas as pd
 from datetime import datetime
 import requests
+import asyncio
 
 from app.services import kis_auth
 from app.core.config import settings
+from app import websocket_manager
 
 class kis_api:
     def __init__(self):
@@ -17,6 +19,7 @@ class kis_api:
         self.__trans_menulist = '고객ID|계좌번호|주문번호|원주문번호|매도매수구분|정정구분|주문종류|주문조건|종목코드|체결수량|체결단가|체결시간|거부여부|체결여부|접수여부|지점번호|주문수량|계좌명|호가조건가격|주문거래소구분|실시간체결창표시여부|종목명|필러'
         self.__yymmdd = datetime.now().strftime("%y%m%d")
         self.__sell_to_buy_order_map = {}
+        self.__d2_cash = 0
 
     # ============================================================= #
     # ================== 데이터 가공하는 부분 ======================== #
@@ -145,7 +148,7 @@ class kis_api:
             return jango_df
 
 
-    def sell_update(self, jango_df, trans_df):
+    async def sell_update(self, jango_df, trans_df, d2_cash):
         print('sell_update() 실행')
         print(trans_df)
         sell_ord_num = trans_df['주문번호'].values[0]
@@ -174,6 +177,18 @@ class kis_api:
                 print('잔량', 잔량)
                 jango_df.at[idx, '체결잔량'] = str(잔량)
                 jango_df.at[idx, '체결량'] = str(누적체결량)
+
+                수수료 = 0.015
+                self.__d2_cash = int(d2_cash)
+                매수가 = int(jango_df.at[idx, '체결단가'])
+                매도가 = int(jango_df.at[idx, '매도_주문가격'])
+                수량 = int(jango_df.at[idx, '체결량'])
+                순이익 = (매도가 - 매수가) * 수량
+                self.__d2_cash += 순이익
+                print('self.__d2_cash', self.__d2_cash)
+                balance_data = {"type": "balance", "data": self.__d2_cash}
+                await websocket_manager.manager.broadcast(json.dumps(balance_data))
+
 
                 if 누적체결량 == 주문수량:         # 전부 체결되면 행 제거
                     print('전부체결')
