@@ -35,6 +35,7 @@ async def lifespan(app: FastAPI):
         print("앱 종료전 kis_receiver.jango_df")
         print(kis_receiver.jango_df)
         kis_db.delete_data()
+        print('kis_receiver.jango_df.columns: ', kis_receiver.jango_df.columns)
         kis_db.insert_data(kis_receiver.jango_df.to_dict(orient="records"))
 
 app = FastAPI(lifespan=lifespan)
