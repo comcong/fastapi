@@ -164,11 +164,10 @@ class kis_api:
                     if tran_code not in code_list:  # 없는 종목코드 구독 해제
                         print('없는 종목코드 구독 해제')
                         await self.subscribe(ws=ws, tr_type='2', tr_id=tr_id, code_list=[tran_code])
-
-                    return jango_df, '0'
+                    return jango_df
 
                 else:
-                    return jango_df, '1'
+                    return jango_df
 
         else:
             print(f"매수 주문번호가 없는 매도주문번호 {sell_ord_num} 가 체결되었습니다. 체결 데이터 확인 필요!!")
