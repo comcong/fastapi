@@ -15,7 +15,7 @@ from app.kis_invesment import account_balance
 jango_df: pd.DataFrame = pd.DataFrame()
 async def start_kis_receiver():
     global jango_df
-    col_names = ['매수_주문번호', '종목명', '종목코드', '체결시간', '주문수량', '체결수량', '체결단가', '현재가', '수익률', '매도_주문가격', '매도_주문수량', '체결량', '체결잔량', '매도_주문번호']
+    col_names = ['매수_주문번호', '종목명', '종목코드', '체결시간', '주문수량', '체결수량', '체결단가', '현재가', '매도_주문가격', '매도_주문수량', '체결량', '체결잔량', '매도_주문번호']
     jango_df = jango_db(col_names)
     print('첫 시작 jango_df columns: ', jango_df.columns)
     code_list = jango_df['종목코드'].unique().tolist()  # DB 에서 종목코드 가져옴
@@ -57,8 +57,6 @@ async def start_kis_receiver():
                                 jango_df = res[0]
                                 if res[1] == '0':
                                     asyncio.create_task(update_balance())
-                                    # balance_data = {"type": "balance", "data": update_balance()}
-                                    # await websocket_manager.manager.broadcast(json.dumps(balance_data))
                             jango_df = jango_df.sort_values(by='매수_주문번호').apply(lambda col: col.fillna(''))
                             cols = ['주문수량', '체결수량', '체결단가', '매도_주문가격']
                             jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0'))
@@ -102,17 +100,6 @@ def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
     jango_df = pd.merge(jango_df, df, on='종목코드', how='left')  # 병합
     jango_df.loc[jango_df["새현재가"].notna(), "현재가"] = jango_df["새현재가"]
     jango_df = jango_df.drop(columns=['새현재가'])
-    # fee_rate = 0.00015
-    # tax_rate = 0.0015
-    # mask = pd.to_numeric(jango_df["현재가"], errors="coerce").notna()
-    # 매수가 = jango_df.loc[mask, '체결단가'].astype(int)
-    # 매도가 = jango_df.loc[mask, '현재가'].astype(int)
-    # 매수_수수료 = 매수가 * fee_rate
-    # 매도_수수료 = 매도가 * fee_rate
-    # 세금 = 매도가 * tax_rate
-    # 수익률 = round((매도가 - 매수가 - 매수_수수료 - 매도_수수료 - 세금) / 매수가 * 100, 2)
-    # jango_df.loc[mask, '수익률'] = 수익률.astype(str)
-    # print("jango_df['수익률']: ", '\n', jango_df['수익률'], '\n')
     print('update_jango_df 종료')
     return jango_df
 
