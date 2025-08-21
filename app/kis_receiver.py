@@ -105,7 +105,23 @@ def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
     jango_df = pd.merge(jango_df, df, on='종목코드', how='left')  # 병합
     jango_df.loc[jango_df["새현재가"].notna(), "현재가"] = jango_df["새현재가"]
     jango_df = jango_df.drop(columns=['새현재가'])
+
+
+    # 수익률 계산
+    fee_rate = 0.00015
+    tax_rate = 0.0015
+    mask = pd.to_numeric(jango_df["현재가"], errors="coerce").notna()
+    매수가 = jango_df.loc[mask, '체결단가'].astype(int)
+    매도가 = jango_df.loc[mask, '현재가'].astype(int)
+    매수_수수료 = 매수가 * fee_rate
+    매도_수수료 = 매도가 * fee_rate
+    세금 = 매도가 * tax_rate
+    수익률 = round((매도가 - 매수가 - 매수_수수료 - 매도_수수료 - 세금) / 매수가 * 100, 2)
+    print('수익률: ', '\n', 수익률, '\n')
+    jango_df.loc[mask, '수익률'] = 수익률.astype(str)
+
     print('update_jango_df 종료')
+
     return jango_df
 
 def safe_for_json(d):
