@@ -13,7 +13,7 @@ from app.kis_invesment.kis_manager import kis
 from app.kis_invesment import account_balance
 
 jango_df: pd.DataFrame = pd.DataFrame()
-d2_cash = account_balance.get_balance()
+# d2_cash = account_balance.get_balance()
 # balance = ''
 
 async def start_kis_receiver():
@@ -47,8 +47,8 @@ async def start_kis_receiver():
                             print('tr_id == "H0STCNT0":')
 
                             jango_df = update_jango_df(data[['종목코드', '새현재가']].copy())
-                            cols = ['주문수량', '체결수량']
-                            jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0'))
+                            # cols = ['주문수량', '체결수량']
+                            # jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0'))
                             json_data = jango_df.drop(columns='체결량').to_dict(orient="records")
                             data = {"type": "stock_data", "data": json_data}
                             print('json_data', data)
@@ -69,15 +69,24 @@ async def start_kis_receiver():
                                 # balance = update_balance(jango_df, balance, trans_df.at[0, '주문번호'], trans_df.at[0, '체결수량'], trans_df.at[0, '체결단가'])
                                 # balance_data = {"type": "balance", "data": balance}
                                 # await websocket_manager.manager.broadcast(json.dumps(balance_data))
-                                jango_df = await kis.sell_update(jango_df=jango_df, trans_df=trans_df, d2_cash=d2_cash)
+
+                                # cols = ['주문수량', '체결수량', '체결단가', '매도_주문가격']
+                                # jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0'))
+                                res = await kis.sell_update(jango_df=jango_df, trans_df=trans_df) #, d2_cash=d2_cash)
+                                jango_df = res[0]
+                                if res[1] == '0':
+                                    balance_data = {"type": "balance", "data": update_balance()}
+                                    await websocket_manager.manager.broadcast(json.dumps(balance_data))
 
 
                             # jango_df = jango_df.sort_values(by='매수_주문번호').fillna('')
                             jango_df = jango_df.sort_values(by='매수_주문번호').apply(lambda col: col.fillna(''))
-                            # cols = ['주문수량', '체결수량', '체결단가', '매도_주문가격', '매도_주문수량', '매도_체결수량']
-                            # jango_df = jango_df.apply(lambda col: col.astype(str).str.lstrip('0'))
                             cols = ['주문수량', '체결수량', '체결단가', '매도_주문가격']
                             jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0'))
+
+                            # cols = ['주문수량', '체결수량', '체결단가', '매도_주문가격']
+                            # jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0'))
+
                             json_data = jango_df.drop(columns='체결량').to_dict(orient="records")
                             data = {"type": "stock_data", "data": json_data}
                             print('json_data', data)
@@ -172,25 +181,29 @@ def safe_for_json(d):
     return d
 
 
-def update_balance(jango_df, balance , sell_order_no, sell_qty, sell_price):
+def update_balance():
     print('update_balance() 실행')
-    fee_rate = 0.00015
-    tax_rate = 0.0015
-    balance = int(balance)
-    sell_qty = int(sell_qty)
-    sell_price = int(sell_price)
+    # fee_rate = 0.00015
+    # tax_rate = 0.0015
+    # balance = int(balance)
+    # sell_qty = int(sell_qty)
+    # sell_price = int(sell_price)
+    #
+    # matched_rows = jango_df[jango_df['매도_주문번호'] == sell_order_no]        # jango_df 에서 매도_주문번호 행 찾기
+    #
+    # if matched_rows.empty:    # 매도_주문번호가 없으면 기존 잔고 반환
+    #     print("Error: 매도_주문번호를 찾을 수 없습니다.")
+    #     return balance
+    #
+    # purchase_price = int(matched_rows.at[0, '체결단가'])        # 매입단가
+    # purchase_cost_reduction = sell_qty * purchase_price   # 매입금액
+    # sell_revenue = sell_qty * sell_price * (1 - tax_rate)  # 매도 체결 금액
+    # updated_balance = str(balance - purchase_cost_reduction + sell_revenue)  # 잔고 업데이트
 
-    matched_rows = jango_df[jango_df['매도_주문번호'] == sell_order_no]        # jango_df 에서 매도_주문번호 행 찾기
-
-    if matched_rows.empty:    # 매도_주문번호가 없으면 기존 잔고 반환
-        print("Error: 매도_주문번호를 찾을 수 없습니다.")
-        return balance
-
-    purchase_price = int(matched_rows.at[0, '체결단가'])        # 매입단가
-    purchase_cost_reduction = sell_qty * purchase_price   # 매입금액
-    sell_revenue = sell_qty * sell_price * (1 - tax_rate)  # 매도 체결 금액
-    updated_balance = str(balance - purchase_cost_reduction + sell_revenue)  # 잔고 업데이트
-    return updated_balance
+    d2_cash = int(account_balance.get_balance())
+    매입금액 = int((jango_df['체결수량'].astype('int') * jango_df['체결단가'].astype('int')).sum())
+    balance = d2_cash + 매입금액
+    return balance
 
 # def init_balance():
 #     매입금액_총합 = (jango_df['체결수량'].astype(int) * jango_df['체결단가'].astype(int)).sum()
