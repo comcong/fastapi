@@ -36,8 +36,7 @@ async def start_kis_receiver():
                         tr_id = data.iloc[0]['tr_id']
                         if tr_id == 'H0STCNT0':            # 실시간 현재가가 들어오는 경우
                             print('tr_id == "H0STCNT0":')
-
-                            jango_df = update_jango_df(data[['종목코드', '새현재가']].copy())
+                            jango_df = update_price(data[['종목코드', '새현재가']].copy())
                             json_data = jango_df.drop(columns='체결량').to_dict(orient="records")
                             data = {"type": "stock_data", "data": json_data}
                             print('json_data', data)
@@ -97,7 +96,7 @@ async def send_initial_data(websocket):
     stock_data = safe_for_json(stock_data)
     await websocket.send_text(json.dumps(stock_data))
 
-def update_jango_df(df: pd.DataFrame = None) -> pd.DataFrame:
+def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
     global jango_df  # 실시간 현재가 데이터 전역변수 사용
     jango_df = pd.merge(jango_df, df, on='종목코드', how='left')  # 병합
     jango_df.loc[jango_df["새현재가"].notna(), "현재가"] = jango_df["새현재가"]
