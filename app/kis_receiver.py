@@ -13,7 +13,7 @@ from app.kis_invesment.kis_manager import kis
 from app.kis_invesment import account_balance
 
 jango_df: pd.DataFrame = pd.DataFrame()
-balance = ''
+balance = []
 async def start_kis_receiver():
     global jango_df
     global balance
@@ -116,11 +116,34 @@ def safe_for_json(d):
 
 async def update_balance():
     print('update_balance() 실행')
+    fee_rate = 0.00015
+    tax_rate = 0.0015
     d2_cash = int(account_balance.get_balance())
     매입금액 = int((jango_df['체결수량'].astype('int') * jango_df['체결단가'].astype('int')).sum())
+    매입수수료 = 매입금액 * fee_rate
+    평가금액 = int((jango_df['체결수량'].astype('int') * jango_df['현재가'].astype('int')).sum())
+    매도수수료 = 평가금액 * fee_rate
+    세금 = 평가금액 * tax_rate
+    평가금액 = 평가금액 - 매입수수료 - 매도수수료 - 세금
     balance = d2_cash + 매입금액
+    tot_acc_value = d2_cash + 평가금액
 
-    balance_data = {"type": "balance", "data": balance}
+    data = {'balance': balance, 'tot_acc_value': tot_acc_value, 'd2_cash': d2_cash}
+
+    balance_data = {"type": "balance", "data": data}
     await websocket_manager.manager.broadcast(json.dumps(balance_data))
 
-    return balance
+
+    # mask = pd.to_numeric(jango_df["현재가"], errors="coerce").notna()
+    # 매수가 = jango_df.loc[mask, '체결단가'].astype(int)
+    # 매도가 = jango_df.loc[mask, '현재가'].astype(int)
+    # 매수_수수료 = 매수가 * fee_rate
+    # 매도_수수료 = 매도가 * fee_rate
+    # 세금 = 매도가 * tax_rate
+    # 수익률 = round((매도가 - 매수가 - 매수_수수료 - 매도_수수료 - 세금) / 매수가 * 100, 2)
+    # jango_df.loc[mask, '수익률'] = 수익률.astype(str)
+    # print("jango_df['수익률']: ", '\n', jango_df['수익률'], '\n')
+    # print('update_jango_df 종료')
+    # return jango_df
+
+    return balance, tot_acc_value, d2_cash

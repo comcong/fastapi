@@ -71,7 +71,9 @@ async def transaction(request: Request):
         "index.html",
         {
             "request": request,
-            "balance": kis_receiver.balance,
+            "balance": kis_receiver.balance[0],
+            "tot_acc_value": kis_receiver.balance[1],
+            "d2_cash": kis_receiver.balance[2]
         }
     )
 

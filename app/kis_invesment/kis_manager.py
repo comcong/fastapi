@@ -165,10 +165,10 @@ class kis_api:
                         print('없는 종목코드 구독 해제')
                         await self.subscribe(ws=ws, tr_type='2', tr_id=tr_id, code_list=[tran_code])
 
-                    return (jango_df, '0')
+                    return jango_df, '0'
 
                 else:
-                    return (jango_df, '1')
+                    return jango_df, '1'
 
         else:
             print(f"매수 주문번호가 없는 매도주문번호 {sell_ord_num} 가 체결되었습니다. 체결 데이터 확인 필요!!")
@@ -268,7 +268,7 @@ class kis_api:
                 output = res_data.get("output")
                 sell_order_no =  output.get("ODNO")  # 매도 주문번호 받아오기
                 self.__sell_to_buy_order_map[sell_order_no] = buy_order_no  # {매도주문번호 : 매수주문번호} 맵핑
-                return [sell_order_no, price, qty]
+                return sell_order_no, price, qty
 
             else:
                 print(f"[매도 주문 실패] {res_data}")

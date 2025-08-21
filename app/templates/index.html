@@ -90,9 +90,14 @@
     <div class="summary">
         <div>잔고:</div>
         <div class="num" id="balance_value">{{ '{:,}'.format(balance|int) if balance is not none else '-' }}</div>
-        <div>평가금:</div><div class="num">554,885</div>
-        <div>매수가능금액:</div><div class="num">11,235</div>
+
+        <div>평가금액:</div>
+        <div class="num" id="tot_acc_value">{{ '{:,}'.format(tot_acc_value|int) if tot_acc_value is not none else '-' }}</div>
+
+        <div>매수가능금액:</div>
+        <div class="num" id="d2_cash">{{ '{:,}'.format(d2_cash|int) if d2_cash is not none else '-' }}</div>
     </div>
+
 
     <table id="data_table">
         <thead>
@@ -231,13 +236,23 @@ function handleSellClick(orderNumber, stockCode, stockName, quantity, currentPri
 
 // WebSocket으로 메시지 수신 시 처리
 ws.onmessage = function(event) {
-    const parsed = JSON.parse(event.data); // JSON 파싱
+    const parsed = JSON.parse(event.data);    // JSON 파싱
 
     // 잔고 업데이트
-    if (parsed.type === "balance") { // 서버에서 받은 메시지 타입이 "balance"(잔고 정보)인지 확인
-        const el = document.getElementById('balance_value'); // HTML에서 id="balance_value"인 요소 가져오기
-        if (el) el.textContent = formatNumber(parsed.data);  // 요소가 존재하는지 확인 후 숫자 포맷팅 후 업데이트
-        return; // balance 처리 후 함수 종료
+    if (parsed.type === "balance") {          // 서버에서 받은 메시지 타입이 "balance"(잔고 정보)인지 확인
+        const data = parsed.data;
+
+        // HTML에서 id="balance_value"인 요소 가져오기
+        const balanceEl = document.getElementById('balance_value');
+        const totAccEl = document.getElementById('tot_acc_value');
+        const d2CashEl = document.getElementById('d2_cash');
+
+        // 요소가 존재하는지 확인 후 숫자 포맷팅 후 업데이트
+        if (balanceEl) balanceEl.textContent = formatNumber(data.balance);
+        if (totAccEl) totAccEl.textContent = formatNumber(data.tot_acc_value);
+        if (d2CashEl) d2CashEl.textContent = formatNumber(data.d2_cash);
+
+        return;      // balance 처리 후 함수 종료
     }
 
     // 테이블 업데이트
