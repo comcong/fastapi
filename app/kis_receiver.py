@@ -72,7 +72,7 @@ async def start_kis_receiver():
 
                                 # cols = ['주문수량', '체결수량', '체결단가', '매도_주문가격']
                                 # jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0'))
-                                res = await kis.sell_update(jango_df=jango_df, trans_df=trans_df) #, d2_cash=d2_cash)
+                                res = await kis.sell_update(ws=ws, jango_df=jango_df, trans_df=trans_df) #, d2_cash=d2_cash)
                                 jango_df = res[0]
                                 if res[1] == '0':
                                     balance_data = {"type": "balance", "data": update_balance()}

@@ -19,6 +19,7 @@ class kis_api:
         self.__trans_menulist = '고객ID|계좌번호|주문번호|원주문번호|매도매수구분|정정구분|주문종류|주문조건|종목코드|체결수량|체결단가|체결시간|거부여부|체결여부|접수여부|지점번호|주문수량|계좌명|호가조건가격|주문거래소구분|실시간체결창표시여부|종목명|필러'
         self.__yymmdd = datetime.now().strftime("%y%m%d")
         self.__sell_to_buy_order_map = {}
+        # self.__src_code_lise = []
         # self.__d2_cash = 0
 
     # ============================================================= #
@@ -142,13 +143,13 @@ class kis_api:
             print('code_list', code_list)
             if tran_code not in code_list:  # 새로운 종목 구독 추가
                 print('새로운 종목코드 구독 추가')
-                await self.subscribe(ws=ws, tr_id=tr_id, code_list=[tran_code])
+                await self.subscribe(ws=ws, tr_type='1', tr_id=tr_id, code_list=[tran_code])
             jango_df = pd.concat([jango_df, trans_df], ignore_index=True)
             print('buy_update() 주문이 없는 경우 실행 완료')
             return jango_df
 
 
-    async def sell_update(self, jango_df, trans_df):
+    async def sell_update(self, ws, jango_df, trans_df):
         print('sell_update() 실행')
         print(trans_df)
         sell_ord_num = trans_df['주문번호'].values[0]
@@ -194,6 +195,17 @@ class kis_api:
                 if 누적체결량 == 주문수량:  # 전부 체결되면 행 제거
                     print('전부체결')
                     jango_df.drop(index=idx, inplace=True)
+
+                    tran_code = trans_df['종목코드'].values[0]
+                    code_list = jango_df['종목코드'].unique().tolist()
+                    tr_id = 'H0STCNT0'
+                    print('tran_code', tran_code)
+                    print('code_list', code_list)
+                    if tran_code not in code_list:  # 새로운 종목 구독 추가
+                        print('없는 종목코드 구독 해제')
+                        await self.subscribe(ws=ws, tr_type='2', tr_id=tr_id, code_list=[tran_code])
+
+
                     return (jango_df, '0')
 
                 else:
@@ -226,8 +238,10 @@ class kis_api:
     # ============================================================= #
     # ================== 구독 등록하는 부분 ========================== #
     # ============================================================= #
+    # 1: 등록
+    # 2: 해제
 
-    async def subscribe(self, ws, tr_id=settings.tr_id_transaction, tr_type='1', code_list=None):
+    async def subscribe(self, ws, tr_type='1', tr_id=settings.tr_id_transaction, code_list=None):
         if tr_id in ['H0STCNI0', 'H0STCNI9']:                                               # 실시간 체결알람 tr_id
             senddata = self.__req_data(tr_id=tr_id, tr_key=settings.KIS_HTS_ID, tr_type=tr_type)  # ws 에 전송할 데이터 포맷
             await ws.send(json.dumps(senddata))                                             # 실시간 체결알람 한투api에 구독 등록 요청
