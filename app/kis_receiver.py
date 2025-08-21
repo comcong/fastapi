@@ -56,8 +56,9 @@ async def start_kis_receiver():
                                 res = await kis.sell_update(ws=ws, jango_df=jango_df, trans_df=trans_df) #, d2_cash=d2_cash)
                                 jango_df = res[0]
                                 if res[1] == '0':
-                                    balance_data = {"type": "balance", "data": update_balance()}
-                                    await websocket_manager.manager.broadcast(json.dumps(balance_data))
+                                    asyncio.create_task(update_balance())
+                                    # balance_data = {"type": "balance", "data": update_balance()}
+                                    # await websocket_manager.manager.broadcast(json.dumps(balance_data))
                             jango_df = jango_df.sort_values(by='매수_주문번호').apply(lambda col: col.fillna(''))
                             cols = ['주문수량', '체결수량', '체결단가', '매도_주문가격']
                             jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0'))
@@ -123,9 +124,13 @@ def safe_for_json(d):
     return d
 
 
-def update_balance():
+async def update_balance():
     print('update_balance() 실행')
     d2_cash = int(account_balance.get_balance())
     매입금액 = int((jango_df['체결수량'].astype('int') * jango_df['체결단가'].astype('int')).sum())
     balance = d2_cash + 매입금액
+
+    balance_data = {"type": "balance", "data": balance}
+    await websocket_manager.manager.broadcast(json.dumps(balance_data))
+
     return balance

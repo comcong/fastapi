@@ -1,3 +1,4 @@
+# websocket_manager.py
 from fastapi import WebSocket
 
 class ConnectionManager:
