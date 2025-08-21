@@ -129,21 +129,7 @@ async def update_balance():
     tot_acc_value = d2_cash + 평가금액
 
     data = {'balance': balance, 'tot_acc_value': tot_acc_value, 'd2_cash': d2_cash}
-
     balance_data = {"type": "balance", "data": data}
     await websocket_manager.manager.broadcast(json.dumps(balance_data))
-
-
-    # mask = pd.to_numeric(jango_df["현재가"], errors="coerce").notna()
-    # 매수가 = jango_df.loc[mask, '체결단가'].astype(int)
-    # 매도가 = jango_df.loc[mask, '현재가'].astype(int)
-    # 매수_수수료 = 매수가 * fee_rate
-    # 매도_수수료 = 매도가 * fee_rate
-    # 세금 = 매도가 * tax_rate
-    # 수익률 = round((매도가 - 매수가 - 매수_수수료 - 매도_수수료 - 세금) / 매수가 * 100, 2)
-    # jango_df.loc[mask, '수익률'] = 수익률.astype(str)
-    # print("jango_df['수익률']: ", '\n', jango_df['수익률'], '\n')
-    # print('update_jango_df 종료')
-    # return jango_df
 
     return balance, tot_acc_value, d2_cash
