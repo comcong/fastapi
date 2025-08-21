@@ -62,7 +62,6 @@ async def websocket_endpoint(websocket: WebSocket):
             fws_data = await websocket.receive_text()
             print('fws_data')
             print(fws_data)
-            # {"type":"sell_order","data":{"order_number":"3444","stock_code":"233740","stock_name":"KODEX 코스닥150레버리지","quantity":"1","current_price":"9065"}}
             json_data = json.loads(fws_data)
             res = await kis.sell_stock(json_data['data'])
             if res:
@@ -78,8 +77,3 @@ async def websocket_endpoint(websocket: WebSocket):
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
-    # 예수금2
-    # 잔고  =  예수금2 + 매입금액 합계
-    # 평가금 = 예수금2 + 평가금액 합계
-    # 매수가능금액 = 예수금2 - 매입금액 합계

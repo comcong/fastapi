@@ -5,11 +5,9 @@ from base64 import b64decode
 import pandas as pd
 from datetime import datetime
 import requests
-import asyncio
 
 from app.services import kis_auth
 from app.core.config import settings
-from app import websocket_manager
 
 class kis_api:
     def __init__(self):
@@ -19,8 +17,6 @@ class kis_api:
         self.__trans_menulist = '고객ID|계좌번호|주문번호|원주문번호|매도매수구분|정정구분|주문종류|주문조건|종목코드|체결수량|체결단가|체결시간|거부여부|체결여부|접수여부|지점번호|주문수량|계좌명|호가조건가격|주문거래소구분|실시간체결창표시여부|종목명|필러'
         self.__yymmdd = datetime.now().strftime("%y%m%d")
         self.__sell_to_buy_order_map = {}
-        # self.__src_code_lise = []
-        # self.__d2_cash = 0
 
     # ============================================================= #
     # ================== 데이터 가공하는 부분 ======================== #
@@ -46,24 +42,13 @@ class kis_api:
             if extracted_data['encrypted'] == '1':        # 암호화된 데이터인 경우
                 extracted_data['data'] = self.__aes_cbc_base64_dec(data)  # 데이터 복호화
 
-            # if (extracted_data['tr_id'] == 'H0STCNI0') or (extracted_data['tr_id'] == 'H0STCNI9'):  # 실시간 체결통보
             if extracted_data['tr_id'] in ['H0STCNI0', 'H0STCNI9']:  # 실시간 체결통보
-                # print('추적2')
-                # print('문자열이 실시간 체결통보')
                 data_keys = self.__trans_menulist.split('|')
-                # print('data_keys', data_keys)
-                # print('key 개수: ', len(data_keys))
                 data_values = extracted_data['data'].split('^')
-                # print('data_values', data_values)
-                # print('value 개수: ', len(data_values))
                 data = dict(zip(data_keys, data_values))  # zip으로 묶어서 딕셔너리 형태로 변환
                 data['매수_주문번호'] = self.__yymmdd + data['주문번호']
 
-
-
             elif extracted_data['tr_id'] == 'H0STCNT0':    # 실시간 현재가  H0STCNT0
-                # print('추적5')
-                # print('문자열이 실시간 현재가', extracted_data['data'])
                 data_keys = self.__price_menulist.split('|')
                 data_values = data.split('^')
                 data = dict(zip(data_keys, data_values))  # zip으로 묶어서 딕셔너리 형태로 변환
@@ -75,28 +60,21 @@ class kis_api:
 
         except:                                                   # 딕셔너리 형태의 문자열인 경우
             data = json.loads(row_data)
-            # print('추적6')
             tr_id = data['header']['tr_id']
             if tr_id != 'PINGPONG': # PINGPONG 데이터가 아닌 경우
-                # print('추적7')
                 rt_cd = data['body']['rt_cd']
 
                 if rt_cd == '0':                                  # 정상 데이터인 경우
-                    # print('추적8')
                     self.__iv = data["body"]["output"]["iv"]      # iv 값 할당
                     self.__key = data["body"]["output"]["key"]    # key 값 할당
                     msg = data["body"]["msg1"]
                     msg_cd = data["body"]["msg_cd"]
                     return data  # 정상 데이터 리턴
                 else:
-                    # print('추적9')
                     return data  # 비정상 데이터 리턴
 
             else:
-                # print('추적10')
                 return data   # PINGPONG 데이터 그대로 리턴
-
-
 
     async def buy_update(self, ws, jango_df, trans_df):
         print('buy_update() 실행')
@@ -105,7 +83,6 @@ class kis_api:
         # 주문번호가 이미 존재하는지 확인
         if ord_num in jango_df['매수_주문번호'].values:
             print('주문번호가 있는 경우')
-            # 기존 행 가져오기
             idx = jango_df[jango_df['매수_주문번호'] == ord_num].index[0] # 기존 주문번호가 있는 행번호 가져오기
 
             # 수량 누적 (int로 변환 주의)
@@ -158,12 +135,8 @@ class kis_api:
 
         if sell_ord_num in self.__sell_to_buy_order_map:
             buy_ord_num = self.__sell_to_buy_order_map[sell_ord_num]
-            # 주문번호가 존재하는지 확인
-            if buy_ord_num in jango_df['매수_주문번호'].values:
-
+            if buy_ord_num in jango_df['매수_주문번호'].values:  # 주문번호가 존재하는지 확인
                 idx = jango_df[jango_df['매수_주문번호'] == buy_ord_num].index[0] # 기존 주문번호가 있는 행번호 가져오기
-
-                # 수량 차감 (int로 변환 주의)
                 주문수량 = int(jango_df.at[idx, '매도_주문수량'])
                 print('주문수량', 주문수량)
                 체결수량 = int(trans_df['체결수량'][0])
@@ -179,19 +152,6 @@ class kis_api:
                 jango_df.at[idx, '체결잔량'] = str(잔량)
                 jango_df.at[idx, '체결량'] = str(누적체결량)
 
-                # 수수료 = 0
-                # self.__d2_cash = int(d2_cash)
-                # 매수가 = int(jango_df.at[idx, '체결단가'])
-                # 매도가 = int(jango_df.at[idx, '매도_주문가격'])
-                # 수량 = int(jango_df.at[idx, '체결량'])
-                # 매수수수료 = 매수가 * 수량 * 수수료
-                # 매도수수료 = 매도가 * 수량 * 수수료
-                # 순이익 = (매도가 - 매수가) * 수량 - 매수수수료 - 매도수수료
-                # self.__d2_cash += 순이익
-                # print('self.__d2_cash', self.__d2_cash)
-                # balance_data = {"type": "balance", "data": self.__d2_cash}
-                # await websocket_manager.manager.broadcast(json.dumps(balance_data))
-
                 if 누적체결량 == 주문수량:  # 전부 체결되면 행 제거
                     print('전부체결')
                     jango_df.drop(index=idx, inplace=True)
@@ -201,10 +161,9 @@ class kis_api:
                     tr_id = 'H0STCNT0'
                     print('tran_code', tran_code)
                     print('code_list', code_list)
-                    if tran_code not in code_list:  # 새로운 종목 구독 추가
+                    if tran_code not in code_list:  # 없는 종목코드 구독 해제
                         print('없는 종목코드 구독 해제')
                         await self.subscribe(ws=ws, tr_type='2', tr_id=tr_id, code_list=[tran_code])
-
 
                     return (jango_df, '0')
 

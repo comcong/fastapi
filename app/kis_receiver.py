@@ -13,19 +13,12 @@ from app.kis_invesment.kis_manager import kis
 from app.kis_invesment import account_balance
 
 jango_df: pd.DataFrame = pd.DataFrame()
-# d2_cash = account_balance.get_balance()
-# balance = ''
-
 async def start_kis_receiver():
     global jango_df
-    # global balance
     col_names = ['매수_주문번호', '종목명', '종목코드', '체결시간', '주문수량', '체결수량', '체결단가', '현재가', '수익률', '매도_주문가격', '매도_주문수량', '체결량', '체결잔량', '매도_주문번호']
     jango_df = jango_db(col_names)
     print('첫 시작 jango_df columns: ', jango_df.columns)
-    # balance = init_balance()
     code_list = jango_df['종목코드'].unique().tolist()  # DB 에서 종목코드 가져옴
-
-
 
     while True:
         try:
@@ -34,9 +27,7 @@ async def start_kis_receiver():
                 await kis.subscribe(ws=ws, tr_id='H0STCNT0', code_list=code_list)
 
                 while True:
-                    raw_data = await ws.recv()        # ws로부터 데이터 수신
-                    # print("수신된 원본 데이터: ")
-                    # print(raw_data)
+                    raw_data = await ws.recv()
                     data = await kis.make_data(raw_data)  # 데이터 가공
                     print("수신된 가공 데이터: ")
                     print(data)
@@ -47,8 +38,6 @@ async def start_kis_receiver():
                             print('tr_id == "H0STCNT0":')
 
                             jango_df = update_jango_df(data[['종목코드', '새현재가']].copy())
-                            # cols = ['주문수량', '체결수량']
-                            # jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0'))
                             json_data = jango_df.drop(columns='체결량').to_dict(orient="records")
                             data = {"type": "stock_data", "data": json_data}
                             print('json_data', data)
@@ -56,7 +45,6 @@ async def start_kis_receiver():
                             print('데이터프레임 전송완료')
 
                         elif (tr_id in ['H0STCNI9', 'H0STCNI0']) and (data['체결여부'].values.tolist()[0] == '2'):  # 체결통보 데이터
-                            # sanare78^5014279001^0000001562^^02^0^00^0^027360^0000000001^000002200^092701^0^1^1^00950^000000001^신명진^1Y^10^^아주IB투자^
                             trans_df = data.copy()
                             print('체결통보 df')
                             if trans_df['매도매수구분'].values[0] == '02':    # 01: 매도, 02: 매수
@@ -66,26 +54,14 @@ async def start_kis_receiver():
                             elif trans_df['매도매수구분'].values[0] == '01':    # 01: 매도, 02: 매수
                                 print('체결통보')
                                 print('체결수량:  ', trans_df.at[0, '체결수량'])
-                                # balance = update_balance(jango_df, balance, trans_df.at[0, '주문번호'], trans_df.at[0, '체결수량'], trans_df.at[0, '체결단가'])
-                                # balance_data = {"type": "balance", "data": balance}
-                                # await websocket_manager.manager.broadcast(json.dumps(balance_data))
-
-                                # cols = ['주문수량', '체결수량', '체결단가', '매도_주문가격']
-                                # jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0'))
                                 res = await kis.sell_update(ws=ws, jango_df=jango_df, trans_df=trans_df) #, d2_cash=d2_cash)
                                 jango_df = res[0]
                                 if res[1] == '0':
                                     balance_data = {"type": "balance", "data": update_balance()}
                                     await websocket_manager.manager.broadcast(json.dumps(balance_data))
-
-
-                            # jango_df = jango_df.sort_values(by='매수_주문번호').fillna('')
                             jango_df = jango_df.sort_values(by='매수_주문번호').apply(lambda col: col.fillna(''))
                             cols = ['주문수량', '체결수량', '체결단가', '매도_주문가격']
                             jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0'))
-
-                            # cols = ['주문수량', '체결수량', '체결단가', '매도_주문가격']
-                            # jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0'))
 
                             json_data = jango_df.drop(columns='체결량').to_dict(orient="records")
                             data = {"type": "stock_data", "data": json_data}
@@ -108,9 +84,6 @@ async def start_kis_receiver():
         print('5초간 대기')
 
 
-
-
-
 def jango_db(col_names):
     supa_db = kis_db.get_data()
     jango_df = pd.DataFrame(supa_db, columns=col_names).sort_values('체결시간')
@@ -125,52 +98,22 @@ async def send_initial_data(websocket):
     await websocket.send_text(json.dumps(stock_data))
 
 def update_jango_df(df: pd.DataFrame = None) -> pd.DataFrame:
-    # print('update_jango_df 실행')
-    # print('df: ', df)
     global jango_df  # 실시간 현재가 데이터 전역변수 사용
-    # if df is None:
-    #     print('비어있는 데이터프레임')
-    #     return jango_df
-    # else:
     jango_df = pd.merge(jango_df, df, on='종목코드', how='left')  # 병합
-    # print('jango_df columns merge후 : ', '\n', jango_df.columns, '\n')
-    # print('jango_df merge후 : ', '\n',  jango_df[['종목코드', '현재가', '새현재가']], '\n')
     jango_df.loc[jango_df["새현재가"].notna(), "현재가"] = jango_df["새현재가"]
     jango_df = jango_df.drop(columns=['새현재가'])
-    # print('merge jango_df drop 후: ', '\n', jango_df[['종목코드', '현재가']], '\n')
-    # print('merge jango_df: ', jango_df)
-    # print('update_jango_df 함수 안 jango_df', '\n', jango_df, '\n')
-
     fee_rate = 0.00015
     tax_rate = 0.0015
-
     mask = pd.to_numeric(jango_df["현재가"], errors="coerce").notna()
-
     매수가 = jango_df.loc[mask, '체결단가'].astype(int)
-    # print('매수가: ', '\n',  매수가, '\n')
-    #
-    # print("jango_df['현재가']: ", '\n', jango_df['현재가'], '\n')
     매도가 = jango_df.loc[mask, '현재가'].astype(int)
-
-    # print('매도가: ', '\n', 매도가, '\n')
     매수_수수료 = 매수가 * fee_rate
-    # print('매수_수수료: ', '\n', 매수_수수료, '\n')
     매도_수수료 = 매도가 * fee_rate
-    # print('매도_수수료: ', '\n', 매도_수수료, '\n')
-    실제_매수금액 = 매수가 + 매수_수수료
-    # print('실제_매수금액: ', '\n', 실제_매수금액, '\n')
     세금 = 매도가 * tax_rate
-    # print('세금: ', '\n', 세금, '\n')
-    실제_매도금액 = 매도가 - 매도_수수료 - 세금
-    # print('실제_매도금액: ', '\n', 실제_매도금액, '\n')
-
     수익률 = round((매도가 - 매수가 - 매수_수수료 - 매도_수수료 - 세금) / 매수가 * 100, 2)
     jango_df.loc[mask, '수익률'] = 수익률.astype(str)
-
-    # jango_df['수익률'] = round(((실제_매도금액 - 실제_매수금액) / 실제_매수금액) * 100, 2).astype(str)
     print("jango_df['수익률']: ", '\n', jango_df['수익률'], '\n')
     print('update_jango_df 종료')
-
     return jango_df
 
 def safe_for_json(d):
@@ -183,29 +126,7 @@ def safe_for_json(d):
 
 def update_balance():
     print('update_balance() 실행')
-    # fee_rate = 0.00015
-    # tax_rate = 0.0015
-    # balance = int(balance)
-    # sell_qty = int(sell_qty)
-    # sell_price = int(sell_price)
-    #
-    # matched_rows = jango_df[jango_df['매도_주문번호'] == sell_order_no]        # jango_df 에서 매도_주문번호 행 찾기
-    #
-    # if matched_rows.empty:    # 매도_주문번호가 없으면 기존 잔고 반환
-    #     print("Error: 매도_주문번호를 찾을 수 없습니다.")
-    #     return balance
-    #
-    # purchase_price = int(matched_rows.at[0, '체결단가'])        # 매입단가
-    # purchase_cost_reduction = sell_qty * purchase_price   # 매입금액
-    # sell_revenue = sell_qty * sell_price * (1 - tax_rate)  # 매도 체결 금액
-    # updated_balance = str(balance - purchase_cost_reduction + sell_revenue)  # 잔고 업데이트
-
     d2_cash = int(account_balance.get_balance())
     매입금액 = int((jango_df['체결수량'].astype('int') * jango_df['체결단가'].astype('int')).sum())
     balance = d2_cash + 매입금액
     return balance
-
-# def init_balance():
-#     매입금액_총합 = (jango_df['체결수량'].astype(int) * jango_df['체결단가'].astype(int)).sum()
-#     balance = str(int(d2_cash))  # 초기 잔고
-#     return balance
