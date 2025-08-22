@@ -94,7 +94,13 @@
 
         <div>평가금액:</div>
         <div class="num" id="tot_acc_value">{{ '{:,}'.format(tot_acc_value|int) if tot_acc_value is not none else '-' }}</div>
-
+        <div>이익금:</div>
+        <div class="num {{ 'profit-positive' if acc_profit|default(0) > 0 else
+                   'profit-negative' if acc_profit|default(0) < 0 else
+                   'profit-zero' }}"
+             id="acc_profit">
+            {{ acc_profit|default('-')|int|abs|string }}
+        </div>
         <div>매수가능금액:</div>
         <div class="num" id="d2_cash">{{ '{:,}'.format(d2_cash|int) if d2_cash is not none else '-' }}</div>
     </div>
@@ -220,10 +226,22 @@ ws.onmessage = function(event) {
         const data = parsed.data;
         const balanceEl = document.getElementById('balance_value');
         const totAccEl = document.getElementById('tot_acc_value');
+        const accProfitEl = document.getElementById('acc_profit');
         const d2CashEl = document.getElementById('d2_cash');
 
         if (balanceEl) balanceEl.textContent = formatNumber(data.balance);
         if (totAccEl) totAccEl.textContent = formatNumber(data.tot_acc_value);
+        if (accProfitEl) accProfitEl.textContent = formatNumber(data.acc_profit);
+        if (accProfitEl) {
+            const profit = Number(data.acc_profit);             // 숫자로 변환
+            accProfitEl.textContent = formatNumber(profit);     // 텍스트 업데이트
+            // 값에 따라 CSS 클래스 적용
+            accProfitEl.className = 'num ' + (
+                profit > 0 ? 'profit-positive' :
+                profit < 0 ? 'profit-negative' :
+                'profit-zero'
+                );
+            }
         if (d2CashEl) d2CashEl.textContent = formatNumber(data.d2_cash);
 
         return;

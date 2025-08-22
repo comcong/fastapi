@@ -52,7 +52,7 @@ async def start_kis_receiver():
                             print('체결통보 df')
                             if trans_df['매도매수구분'].values[0] == '02':    # 01: 매도, 02: 매수
                                 jango_df = await kis.buy_update(ws=ws, jango_df=jango_df, trans_df=trans_df)
-                                jango_df = jango_df[col_names]  # buy_update 에서 새로운 주문일 때 컬럼이 늘어남
+                                jango_df = jango_df[col_names]
 
                             elif trans_df['매도매수구분'].values[0] == '01':    # 01: 매도, 02: 매수
                                 print('체결통보')
@@ -152,11 +152,12 @@ async def update_balance(tr_id):
             평가금액 = 평가금액 - 매입수수료 - 매도수수료 - 세금
             balance = d2_cash + 매입금액
             tot_acc_value = d2_cash + 평가금액
+            acc_profit = tot_acc_value - balance
 
-            data = {'balance': balance, 'tot_acc_value': tot_acc_value, 'd2_cash': d2_cash}
+            data = {'balance': balance, 'tot_acc_value': tot_acc_value,  'acc_profit': acc_profit, 'd2_cash': d2_cash}
             balance_data = {"type": "balance", "data": data}
             await websocket_manager.manager.broadcast(json.dumps(balance_data))
             print('update_balance() 종료')
-            return balance, tot_acc_value, d2_cash
+            return balance, tot_acc_value, acc_profit, d2_cash
         except Exception as e:
             print('update_balance() 에러:  ', e)

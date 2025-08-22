@@ -73,7 +73,8 @@ async def transaction(request: Request):
             "request": request,
             "balance": kis_receiver.balance[0],
             "tot_acc_value": kis_receiver.balance[1],
-            "d2_cash": kis_receiver.balance[2]
+            "acc_profit": kis_receiver.balance[2],
+            "d2_cash": kis_receiver.balance[3]
         }
     )
 
