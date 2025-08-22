@@ -101,9 +101,19 @@ async def send_initial_data(websocket):
     await websocket.send_text(json.dumps(stock_data))
 
 def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
+    print('update_price() 실행')
+    # print('df')
+    # print(df)
+    # print()
     global jango_df  # 실시간 현재가 데이터 전역변수 사용
     jango_df = pd.merge(jango_df, df, on='종목코드', how='left')  # 병합
-    jango_df.loc[jango_df["새현재가"].notna(), "현재가"] = jango_df["새현재가"]
+    # print('추적1')
+    mask = jango_df["새현재가"].notna()
+    # print('jango_df.loc[mask, "현재가"]')
+    # print(jango_df.loc[mask, "현재가"])
+    # print()
+    jango_df.loc[mask, "현재가"] = jango_df.loc[mask, "새현재가"]
+    # print('추적2')
     jango_df = jango_df.drop(columns=['새현재가'])
 
 
@@ -118,9 +128,9 @@ def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
     세금 = 매도가 * tax_rate
     수익률 = round((매도가 - 매수가 - 매수_수수료 - 매도_수수료 - 세금) / 매수가 * 100, 2)
     print('수익률: ', '\n', 수익률, '\n')
-    jango_df.loc[mask, '수익률'] = 수익률.astype(str)
+    # jango_df.loc[mask, '수익률'] = 수익률.astype(str)
 
-    print('update_jango_df 종료')
+    print('update_price() 종료')
 
     return jango_df
 
@@ -139,17 +149,18 @@ async def update_balance(trid):
     tax_rate = 0.0015
     if trid in ['H0STCNI9', 'H0STCNI0']:
         d2_cash = int(account_balance.get_balance())
-    매입금액 = int((jango_df['체결수량'].astype('int') * jango_df['체결단가'].astype('int')).sum())
-    매입수수료 = 매입금액 * fee_rate
-    평가금액 = int((jango_df['체결수량'].astype('int') * jango_df['현재가'].astype('int')).sum())
-    매도수수료 = 평가금액 * fee_rate
-    세금 = 평가금액 * tax_rate
-    평가금액 = 평가금액 - 매입수수료 - 매도수수료 - 세금
-    balance = d2_cash + 매입금액
-    tot_acc_value = d2_cash + 평가금액
+    if (jango_df['현재가'].astype(str).str.strip() != '').all():
+        매입금액 = int((jango_df['체결수량'].astype('int') * jango_df['체결단가'].astype('int')).sum())
+        매입수수료 = int(매입금액 * fee_rate)
+        평가금액 = int((jango_df['체결수량'].astype('int') * jango_df['현재가'].astype('int')).sum())
+        매도수수료 = int(평가금액 * fee_rate)
+        세금 = int(평가금액 * tax_rate)
+        평가금액 = 평가금액 - 매입수수료 - 매도수수료 - 세금
+        balance = d2_cash + 매입금액
+        tot_acc_value = d2_cash + 평가금액
 
-    data = {'balance': balance, 'tot_acc_value': tot_acc_value, 'd2_cash': d2_cash}
-    balance_data = {"type": "balance", "data": data}
-    await websocket_manager.manager.broadcast(json.dumps(balance_data))
-
-    return balance, tot_acc_value, d2_cash
+        data = {'balance': balance, 'tot_acc_value': tot_acc_value, 'd2_cash': d2_cash}
+        balance_data = {"type": "balance", "data": data}
+        await websocket_manager.manager.broadcast(json.dumps(balance_data))
+        print('update_balance() 종료')
+        return balance, tot_acc_value, d2_cash
