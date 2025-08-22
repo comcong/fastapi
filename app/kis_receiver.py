@@ -13,7 +13,7 @@ from app.kis_invesment import account_balance
 
 jango_df: pd.DataFrame = pd.DataFrame()
 balance = []
-d2_cash = ''
+d2_cash = 0
 async def start_kis_receiver():
     global jango_df
     global balance
@@ -98,6 +98,14 @@ async def send_initial_data(websocket):
     stock_data = safe_for_json(stock_data)
     await websocket.send_text(json.dumps(stock_data))
 
+def safe_for_json(d):
+    for item in d['data']:
+        for k, v in item.items():
+            if isinstance(v, float) and math.isnan(v):
+                item[k] = ""  # 또는 None, "NaN" 등
+    return d
+
+
 def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
     print('update_price() 실행')
     global jango_df  # 실시간 현재가 데이터 전역변수 사용
@@ -122,14 +130,6 @@ def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
     print('update_price() 종료')
 
     return jango_df
-
-def safe_for_json(d):
-    for item in d['data']:
-        for k, v in item.items():
-            if isinstance(v, float) and math.isnan(v):
-                item[k] = ""  # 또는 None, "NaN" 등
-    return d
-
 
 async def update_balance(tr_id):
     print('update_balance() 실행')

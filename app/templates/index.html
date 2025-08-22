@@ -99,7 +99,7 @@
                    'profit-negative' if acc_profit|default(0) < 0 else
                    'profit-zero' }}"
              id="acc_profit">
-            {{ acc_profit|default('-')|int|abs|string }}
+            {{ acc_profit|default('-')|int|string }}
         </div>
         <div>매수가능금액:</div>
         <div class="num" id="d2_cash">{{ '{:,}'.format(d2_cash|int) if d2_cash is not none else '-' }}</div>
