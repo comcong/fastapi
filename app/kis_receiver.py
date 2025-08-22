@@ -40,11 +40,11 @@ async def start_kis_receiver():
                         if tr_id == 'H0STCNT0':            # 실시간 현재가가 들어오는 경우
                             print('tr_id == "H0STCNT0":')
                             jango_df = update_price(data[['종목코드', '새현재가']].copy())
-                            json_data = jango_df.drop(columns='체결량').to_dict(orient="records")
-                            data = {"type": "stock_data", "data": json_data}
-                            print('json_data', data)
-                            await websocket_manager.manager.broadcast(json.dumps(data))
-                            print('데이터프레임 전송완료')
+                            # json_data = jango_df.drop(columns='체결량').to_dict(orient="records")
+                            # data = {"type": "stock_data", "data": json_data}
+                            # print('json_data', data)
+                            # await websocket_manager.manager.broadcast(json.dumps(data))
+                            # print('데이터프레임 전송완료')
                             await update_balance(tr_id)
 
                         elif (tr_id in ['H0STCNI9', 'H0STCNI0']) and (data['체결여부'].values.tolist()[0] == '2'):  # 체결통보 데이터
@@ -57,18 +57,18 @@ async def start_kis_receiver():
                             elif trans_df['매도매수구분'].values[0] == '01':    # 01: 매도, 02: 매수
                                 print('체결통보')
                                 print('체결수량:  ', trans_df.at[0, '체결수량'])
-                                jango_df = await kis.sell_update(ws=ws, jango_df=jango_df, trans_df=trans_df) #, d2_cash=d2_cash)
+                                jango_df = await kis.sell_update(ws=ws, jango_df=jango_df, trans_df=trans_df).sort_values(by='매수_주문번호')
 
                             asyncio.create_task(update_balance(tr_id))
-                            jango_df = jango_df.sort_values(by='매수_주문번호').apply(lambda col: col.fillna(''))
+                            # jango_df = jango_df.sort_values(by='매수_주문번호').apply(lambda col: col.fillna(''))
                             cols = ['주문수량', '체결수량', '체결단가', '매도_주문가격']
                             jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0'))
 
-                            json_data = jango_df.drop(columns='체결량').to_dict(orient="records")
-                            data = {"type": "stock_data", "data": json_data}
-                            print('json_data', data)
-                            await websocket_manager.manager.broadcast(json.dumps(data))
-                            print('데이터프레임 전송완료')
+                        json_data = jango_df.drop(columns='체결량').to_dict(orient="records")
+                        data = {"type": "stock_data", "data": json_data}
+                        print('json_data', data)
+                        await websocket_manager.manager.broadcast(json.dumps(data))
+                        print('데이터프레임 전송완료')
 
                     else:
                         msg_data = {"type": "message", "data": data}
@@ -91,11 +91,12 @@ def jango_db(col_names):
     return jango_df
 
 async def send_initial_data(websocket):
-    jango_json_data = jango_df.fillna('').to_dict(orient="records")
+    # jango_json_data = jango_df.fillna('').to_dict(orient="records")
+    jango_json_data = jango_df.to_dict(orient="records")
     print('직렬화 전')
     print(jango_json_data)
     stock_data = {"type": "stock_data", "data": jango_json_data}
-    stock_data = safe_for_json(stock_data)
+    # stock_data = safe_for_json(stock_data)
     await websocket.send_text(json.dumps(stock_data))
 
 def safe_for_json(d):
