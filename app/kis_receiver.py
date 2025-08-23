@@ -18,7 +18,7 @@ async def start_kis_receiver():
     global jango_df
     global balance
     col_names = ['매수_주문번호', '종목명', '종목코드', '체결시간', '주문수량', '체결수량', '체결단가', '현재가', '매도_주문가격', '매도_주문수량', '체결량', '체결잔량', '매도_주문번호']
-    jango_df = jango_db(col_names)
+    jango_df = jango_db(col_names).sort_values(by='매수_주문번호')
     print('첫 시작 jango_df columns: ', jango_df.columns)
     balance = await update_balance('H0STCNI0')
     code_list = jango_df['종목코드'].unique().tolist()  # DB 에서 종목코드 가져옴

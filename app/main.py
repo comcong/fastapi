@@ -26,15 +26,17 @@ async def lifespan(app: FastAPI):
 
     finally:
         print("앱 종료 전 cleanup 시작")
+        print('dkkfkf')
+        print("kis_receiver.jango_df.info:",  '\n', kis_receiver.jango_df.info())
 
         # 1. 안전하게 jango_df 복사
         safe_df = None
         try:
-            if getattr(kis_receiver, "jango_df", None) is not None:
-                safe_df = kis_receiver.jango_df.copy()
-                print("jango_df 복사 성공, shape:", safe_df.shape)
-            else:
-                print("jango_df 없음(None 상태)")
+            # if getattr(kis_receiver, "jango_df", None) is not None:
+            safe_df = kis_receiver.jango_df.copy()
+            print("jango_df 복사 성공, shape:", safe_df.shape)
+            # else:
+            #     print("jango_df 없음(None 상태)")
         except Exception as e:
             print("jango_df 복사 실패:", e)
 
@@ -48,20 +50,24 @@ async def lifespan(app: FastAPI):
             print("백그라운드 task 에러:", e)
 
         # 3. DB 정리 (delete → insert)
-        try:
-            kis_db.delete_data()
-            print("DB 데이터 삭제 완료")
 
-            if safe_df is not None and not safe_df.empty:
-                print("jango_df.columns:", safe_df.columns)
+        if safe_df is not None:
+            try:
+                kis_db.delete_data()
+                print("DB 데이터 삭제 완료")
+
+                # if safe_df is not None and not safe_df.empty:
                 kis_db.insert_data(safe_df.to_dict(orient="records"))
                 print("DB 데이터 insert 완료")
-            else:
-                print("safe_df 가 없거나 비어있음 → insert 생략")
-        except Exception as e:
-            print("DB 처리 중 에러:", e)
+                # else:
+                #     print("safe_df 가 없거나 비어있음 → insert 생략")
+            except Exception as e:
+                print("DB 처리 중 에러:", e)
 
-        print("앱 종료 cleanup 완료")
+            print("앱 종료 cleanup 완료")
+
+        else:
+            print('safe_df 가 None 입니다.')
 
 app = FastAPI(lifespan=lifespan)
 
