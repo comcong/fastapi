@@ -18,7 +18,7 @@ TEMPLATES_DIR = PROJECT_ROOT / "templates"
 templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(fastapi_app: FastAPI):
     task = asyncio.create_task(kis_receiver.start_kis_receiver())  # 백그라운드에서 start_kis_receiver() 실행
     try:
 
