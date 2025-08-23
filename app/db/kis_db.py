@@ -35,6 +35,27 @@ def get_data():
         print(f"데이터 가져오기 오류: {e}")
         return None
 
+def del_and_insert(jango_data: list):
+    if not jango_data:
+        print("저장할 데이터가 없습니다.")
+        return
+
+    try:
+        # 1. 기존 데이터 삭제
+        supabase.table("transaction_info").delete().neq("매수_주문번호", None).execute()
+        print("기존 데이터 삭제 완료")
+
+        # 2. 새 데이터 삽입
+        for i in jango_data:
+            supabase.table("transaction_info").insert(i).execute()
+        print("새 데이터 삽입 완료")
+
+    except Exception as e:
+        print("트랜잭션 처리 중 오류 발생:", e)
+        print(traceback.format_exc())
+
+
+
 def insert_data(data):
     try:
         for i in data:
