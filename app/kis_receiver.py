@@ -12,15 +12,16 @@ from app.kis_invesment.kis_manager import kis
 from app.kis_invesment import account_balance
 
 jango_df: pd.DataFrame = pd.DataFrame()
-balance = []
-d2_cash = 0
+# balance = []
+# d2_cash = 0
+d2_cash = int(account_balance.get_balance())
 async def start_kis_receiver():
     global jango_df
-    global balance
+    # global balance
     col_names = ['매수_주문번호', '종목명', '종목코드', '체결시간', '주문수량', '체결수량', '체결단가', '현재가', '매도_주문가격', '매도_주문수량', '체결량', '체결잔량', '매도_주문번호']
     jango_df = jango_db(col_names).sort_values(by='매수_주문번호')
     print('첫 시작 jango_df columns: ', jango_df.columns)
-    balance = await update_balance('H0STCNI0')
+    # balance = await update_balance()
     code_list = jango_df['종목코드'].unique().tolist()  # DB 에서 종목코드 가져옴
 
     while True:
@@ -41,11 +42,7 @@ async def start_kis_receiver():
                             print('tr_id == "H0STCNT0":')
                             jango_df = update_price(data[['종목코드', '새현재가']].copy())
                             # json_data = jango_df.drop(columns='체결량').to_dict(orient="records")
-                            # data = {"type": "stock_data", "data": json_data}
-                            # print('json_data', data)
-                            # await websocket_manager.manager.broadcast(json.dumps(data))
-                            # print('데이터프레임 전송완료')
-                            await update_balance(tr_id)
+                            await send_update_balance()
 
                         elif (tr_id in ['H0STCNI9', 'H0STCNI0']) and (data['체결여부'].values.tolist()[0] == '2'):  # 체결통보 데이터
                             trans_df = data.copy()
@@ -59,7 +56,7 @@ async def start_kis_receiver():
                                 print('체결수량:  ', trans_df.at[0, '체결수량'])
                                 jango_df = await kis.sell_update(ws=ws, jango_df=jango_df, trans_df=trans_df).sort_values(by='매수_주문번호')
 
-                            asyncio.create_task(update_balance(tr_id))
+                            asyncio.create_task(send_update_balance(tr_id))
                             # jango_df = jango_df.sort_values(by='매수_주문번호').apply(lambda col: col.fillna(''))
                             cols = ['주문수량', '체결수량', '체결단가', '매도_주문가격']
                             jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0'))
@@ -132,7 +129,13 @@ def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
 
     return jango_df
 
-async def update_balance(tr_id):
+async def send_update_balance(tr_id=''):
+    data = await update_balance(tr_id)
+    data = {'balance': data[0], 'tot_acc_value': data[1], 'acc_profit': data[2], 'd2_cash': data[3]}
+    balance_data = {"type": "balance", "data": data}
+    await websocket_manager.manager.broadcast(json.dumps(balance_data))
+
+async def update_balance(tr_id=''):
     print('update_balance() 실행')
     global d2_cash
     fee_rate = 0.00015
@@ -155,10 +158,10 @@ async def update_balance(tr_id):
             tot_acc_value = d2_cash + 평가금액
             acc_profit = tot_acc_value - balance
 
-            data = {'balance': balance, 'tot_acc_value': tot_acc_value,  'acc_profit': acc_profit, 'd2_cash': d2_cash}
-            balance_data = {"type": "balance", "data": data}
-            await websocket_manager.manager.broadcast(json.dumps(balance_data))
-            print('update_balance() 종료')
+            # data = {'balance': balance, 'tot_acc_value': tot_acc_value,  'acc_profit': acc_profit, 'd2_cash': d2_cash}
+            # balance_data = {"type": "balance", "data": data}
+            # await websocket_manager.manager.broadcast(json.dumps(balance_data))
+            # print('update_balance() 종료')
             return balance, tot_acc_value, acc_profit, d2_cash
         except Exception as e:
             print('update_balance() 에러:  ', e)

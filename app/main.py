@@ -73,14 +73,15 @@ app = FastAPI(lifespan=lifespan)
 
 @app.get("/")
 async def transaction(request: Request):
+    data = await kis_receiver.update_balance()
     return templates.TemplateResponse(
         "index.html",
         {
             "request": request,
-            "balance": kis_receiver.balance[0],
-            "tot_acc_value": kis_receiver.balance[1],
-            "acc_profit": kis_receiver.balance[2],
-            "d2_cash": kis_receiver.balance[3]
+            "balance": data[0],
+            "tot_acc_value": data[1],
+            "acc_profit": data[2],
+            "d2_cash": data[3]
         }
     )
 
