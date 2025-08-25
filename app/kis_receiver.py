@@ -54,10 +54,10 @@ async def start_kis_receiver():
 
                             asyncio.create_task(send_update_balance(tr_id))
 
-                        jango_df = jango_df.sort_values(by='매수_주문번호')
+                        jango_df = jango_df.drop(columns='체결량').sort_values(by='매수_주문번호')
                         cols = ['주문수량', '체결수량', '체결단가']
                         jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0'))
-                        json_data = jango_df.drop(columns='체결량').to_dict(orient="records")
+                        json_data = jango_df.to_dict(orient="records")
                         data = {"type": "stock_data", "data": json_data}
                         print('json_data', data)
                         await websocket_manager.manager.broadcast(json.dumps(data))
