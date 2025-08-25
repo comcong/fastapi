@@ -11,12 +11,12 @@ from app.db import kis_db
 from app.kis_invesment.kis_manager import kis
 from app.kis_invesment import account_balance
 
-jango_df: pd.DataFrame = pd.DataFrame()
+jango_df = pd.DataFrame()
 d2_cash = int(account_balance.get_balance())
 async def start_kis_receiver():
     global jango_df
     col_names = ['매수_주문번호', '종목명', '종목코드', '체결시간', '주문수량', '체결수량', '체결단가', '현재가', '매도_주문가격', '매도_주문수량', '체결량', '체결잔량', '매도_주문번호']
-    jango_df = jango_db(col_names).sort_values(by='매수_주문번호')
+    jango_df = jango_db(col_names) #.sort_values(by='매수_주문번호')
     print('첫 시작 jango_df columns: ', jango_df.columns)
     code_list = jango_df['종목코드'].unique().tolist()  # DB 에서 종목코드 가져옴
 
@@ -42,19 +42,20 @@ async def start_kis_receiver():
 
                         elif (tr_id in ['H0STCNI9', 'H0STCNI0']) and (data['체결여부'].values.tolist()[0] == '2'):  # 체결통보 데이터
                             trans_df = data.copy()
-                            print('체결통보 df')
                             if trans_df['매도매수구분'].values[0] == '02':    # 01: 매도, 02: 매수
+                                print('매수 체결통보')
                                 jango_df = await kis.buy_update(ws=ws, jango_df=jango_df, trans_df=trans_df)
                                 jango_df = jango_df[col_names]
 
                             elif trans_df['매도매수구분'].values[0] == '01':    # 01: 매도, 02: 매수
-                                print('체결통보')
+                                print('매도 체결통보')
                                 print('체결수량:  ', trans_df.at[0, '체결수량'])
-                                jango_df = await kis.sell_update(ws=ws, jango_df=jango_df, trans_df=trans_df).sort_values(by='매수_주문번호')
+                                jango_df = await kis.sell_update(ws=ws, jango_df=jango_df, trans_df=trans_df)
 
+                            jango_df = jango_df.sort_values(by='매수_주문번호')
                             asyncio.create_task(send_update_balance(tr_id))
                             # jango_df = jango_df.sort_values(by='매수_주문번호').apply(lambda col: col.fillna(''))
-                            cols = ['주문수량', '체결수량', '체결단가', '매도_주문가격']
+                            cols = ['주문수량', '체결수량', '체결단가']
                             jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0'))
 
                         json_data = jango_df.drop(columns='체결량').to_dict(orient="records")
@@ -74,6 +75,7 @@ async def start_kis_receiver():
             print("네트워크 연결 끊김:", e)
         except Exception as e:
             print("start_kis_receiver 예외:", e)
+            print("예외 시점 jango_df.shape:", jango_df.shape)
         await asyncio.sleep(5)  # 재연결 대기
         print('5초간 대기')
 

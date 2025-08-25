@@ -1,3 +1,4 @@
+# kis_db.py
 from supabase import create_client, Client
 from app.core.config import settings
 import random
@@ -33,8 +34,8 @@ def get_data():
         print(f"데이터 가져오기 오류: {e}")
         return None
 
-def del_and_insert(jango_data: list):
-    if not jango_data:
+def del_and_insert(jango_df):
+    if not jango_df:
         print("저장할 데이터가 없습니다.")
         return
 
@@ -44,8 +45,8 @@ def del_and_insert(jango_data: list):
         print("기존 데이터 삭제 완료")
 
         # 2. 새 데이터 삽입
-        for i in jango_data:
-            supabase.table("transaction_info").insert(i).execute()
+        jango_data = jango_df.fillna(value=None).to_dict(orient="records")
+        supabase.table("transaction_info").insert(jango_data).execute()
         print("새 데이터 삽입 완료")
 
     except Exception as e:

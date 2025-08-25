@@ -140,9 +140,9 @@ class kis_api:
                 주문수량 = int(jango_df.at[idx, '매도_주문수량'])
                 print('주문수량', 주문수량)
                 체결수량 = int(trans_df['체결수량'][0])
-                print('매도_수량', 체결수량)
+                print('체결수량', 체결수량)
 
-                if jango_df.at[idx, '체결량'] == '':
+                if jango_df.at[idx, '체결량'] in ['', None]:
                     누적체결량 = 0
                 else:
                     누적체결량 = int(jango_df.at[idx, '체결량'])
