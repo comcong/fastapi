@@ -17,7 +17,7 @@ async def start_kis_receiver():
     global jango_df
     col_names = ['매수_주문번호', '종목명', '종목코드', '체결시간', '주문수량', '체결수량', '체결단가', '현재가', '매도_주문가격', '매도_주문수량', '체결량', '체결잔량', '매도_주문번호']
     jango_df = jango_db(col_names) #.sort_values(by='매수_주문번호')
-    print('첫 시작 jango_df columns: ', jango_df.columns)
+    print('jango_df_1', '\n', jango_df.shape)
     code_list = jango_df['종목코드'].unique().tolist()  # DB 에서 종목코드 가져옴
 
     while True:
@@ -37,6 +37,7 @@ async def start_kis_receiver():
                         if tr_id == 'H0STCNT0':            # 실시간 현재가가 들어오는 경우
                             print('tr_id == "H0STCNT0":')
                             jango_df = update_price(data[['종목코드', '새현재가']].copy())
+                            print('jango_df_2', '\n', jango_df.shape)
                             # json_data = jango_df.drop(columns='체결량').to_dict(orient="records")
                             await send_update_balance()
 
@@ -45,18 +46,22 @@ async def start_kis_receiver():
                             if trans_df['매도매수구분'].values[0] == '02':    # 01: 매도, 02: 매수
                                 print('매수 체결통보')
                                 jango_df = await kis.buy_update(ws=ws, jango_df=jango_df, trans_df=trans_df)
+                                print('jango_df_3', '\n', jango_df.shape)
                                 # jango_df = jango_df[col_names]
 
                             elif trans_df['매도매수구분'].values[0] == '01':    # 01: 매도, 02: 매수
                                 print('매도 체결통보')
                                 print('체결수량:  ', trans_df.at[0, '체결수량'])
                                 jango_df = await kis.sell_update(ws=ws, jango_df=jango_df, trans_df=trans_df)
+                                print('jango_df_4', '\n', jango_df.shape)
 
                             asyncio.create_task(send_update_balance(tr_id))
 
                         jango_df = jango_df.drop(columns='체결량').sort_values(by='매수_주문번호')
+                        print('jango_df_5', '\n', jango_df.shape)
                         cols = ['주문수량', '체결수량', '체결단가']
                         jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0'))
+                        print('jango_df_10', '\n', jango_df.shape)
                         json_data = jango_df.to_dict(orient="records")
                         data = {"type": "stock_data", "data": json_data}
                         print('json_data', data)
@@ -105,9 +110,11 @@ def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
     print('update_price() 실행')
     global jango_df  # 실시간 현재가 데이터 전역변수 사용
     jango_df = pd.merge(jango_df, df, on='종목코드', how='left')
+    print('jango_df_7', '\n', jango_df.shape)
     mask = jango_df["새현재가"].notna()
     jango_df.loc[mask, "현재가"] = jango_df.loc[mask, "새현재가"]
     jango_df = jango_df.drop(columns=['새현재가'])
+    print('jango_df_8', '\n', jango_df.shape)
 
 
     # 수익률 계산
