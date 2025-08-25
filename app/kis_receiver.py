@@ -11,7 +11,7 @@ from app.db import kis_db
 from app.kis_invesment.kis_manager import kis
 from app.kis_invesment import account_balance
 
-jango_df = pd.DataFrame()
+jango_df = ''
 d2_cash = int(account_balance.get_balance())
 async def start_kis_receiver():
     global jango_df
@@ -45,19 +45,18 @@ async def start_kis_receiver():
                             if trans_df['매도매수구분'].values[0] == '02':    # 01: 매도, 02: 매수
                                 print('매수 체결통보')
                                 jango_df = await kis.buy_update(ws=ws, jango_df=jango_df, trans_df=trans_df)
-                                jango_df = jango_df[col_names]
+                                # jango_df = jango_df[col_names]
 
                             elif trans_df['매도매수구분'].values[0] == '01':    # 01: 매도, 02: 매수
                                 print('매도 체결통보')
                                 print('체결수량:  ', trans_df.at[0, '체결수량'])
                                 jango_df = await kis.sell_update(ws=ws, jango_df=jango_df, trans_df=trans_df)
 
-                            jango_df = jango_df.sort_values(by='매수_주문번호')
                             asyncio.create_task(send_update_balance(tr_id))
-                            # jango_df = jango_df.sort_values(by='매수_주문번호').apply(lambda col: col.fillna(''))
-                            cols = ['주문수량', '체결수량', '체결단가']
-                            jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0'))
 
+                        jango_df = jango_df.sort_values(by='매수_주문번호')
+                        cols = ['주문수량', '체결수량', '체결단가']
+                        jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0'))
                         json_data = jango_df.drop(columns='체결량').to_dict(orient="records")
                         data = {"type": "stock_data", "data": json_data}
                         print('json_data', data)
@@ -129,9 +128,10 @@ def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
 
 async def send_update_balance(tr_id=''):
     data = await update_balance(tr_id)
-    data = {'balance': data[0], 'tot_acc_value': data[1], 'acc_profit': data[2], 'd2_cash': data[3]}
-    balance_data = {"type": "balance", "data": data}
-    await websocket_manager.manager.broadcast(json.dumps(balance_data))
+    if data:
+        data = {'balance': data[0], 'tot_acc_value': data[1], 'acc_profit': data[2], 'd2_cash': data[3]}
+        balance_data = {"type": "balance", "data": data}
+        await websocket_manager.manager.broadcast(json.dumps(balance_data))
 
 async def update_balance(tr_id=''):
     print('update_balance() 실행')
@@ -141,10 +141,10 @@ async def update_balance(tr_id=''):
     if tr_id in ['H0STCNI9', 'H0STCNI0']:
         d2_cash = int(account_balance.get_balance())
 
-    mask = (jango_df['현재가'] == "") | (jango_df['현재가'].isna())
-    if mask.any():
-        pass
-    else:
+    mask = (jango_df['현재가'] == "") | (jango_df['현재가'].isna())  # 현재가가 없는 행 찾기
+    if mask.any():  # 현재가가 없는 행이 하나라도 있으면 패스
+        return None  # None 을 반환하고 종료
+    else:           # 현재가가 모든 행에 전부 있으면
         try:
             매입금액 = int((jango_df['체결수량'].astype('int') * jango_df['체결단가'].astype('int')).sum())
             매입수수료 = int(매입금액 * fee_rate)
