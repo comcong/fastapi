@@ -234,16 +234,17 @@ class kis_api:
         }
         return senddata
 
-    async def sell_stock(self, json_data):
+    async def sell_order(self, json_data):
         print('sell_stock 실행')
         try:
             # {"order_number":"3444","stock_code":"233740","stock_name":"KODEX 코스닥150레버리지","quantity":"1","current_price":"9065"}
             buy_order_no = json_data.get("order_number")
             url = f"{settings.rest_url}/uapi/domestic-stock/v1/trading/order-cash"
             code = json_data['stock_code']
-            order_type = '00'
+            order_type = '04'
             qty = json_data['quantity']
-            price = json_data['current_price']
+            # price = json_data['current_price']
+            price = '0'
 
             headers = {
                 "Content-Type": "application/json",
@@ -264,16 +265,35 @@ class kis_api:
             }
 
             res_data = requests.post(url, headers=headers, data=json.dumps(body)).json()
+            print('res_data', res_data)
 
             if res_data.get("rt_cd") == "0":
                 print(f"[매도 주문 성공] {code} {qty}주 @ {price}원")
                 output = res_data.get("output")
                 sell_order_no =  output.get("ODNO")  # 매도 주문번호 받아오기
                 self.__sell_to_buy_order_map[sell_order_no] = buy_order_no  # {매도주문번호 : 매수주문번호} 맵핑
-                return sell_order_no, price, qty
+                output1 = [sell_order_no, price, qty]
+                output2 = {
+                    "type": "sell_result",
+                    "data": {
+                        "order_number": json_data["order_number"],
+                        "success": True,
+                        "message": "매도 주문이 정상적으로 체결되었습니다."
+                    }
+                }
+                return {'output1': output1, 'output2': output2}
 
             else:
                 print(f"[매도 주문 실패] {res_data}")
+                output2 ={
+                    "type": "sell_result",
+                    "data": {
+                        "order_number": json_data["order_number"],
+                        "success": False,
+                        "message": "매도 주문에 실패했습니다. 잔고를 확인하세요."
+                    }
+                }
+                return {'output2': output2}
 
 
 

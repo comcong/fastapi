@@ -88,15 +88,18 @@ async def websocket_endpoint(websocket: WebSocket):
             print('fws_data')
             print(fws_data)
             json_data = json.loads(fws_data)
-            res = await kis.sell_stock(json_data['data'])
-            if res:
-                sell_order_no, sell_order_price, sell_order_qty = res
+            res = await kis.sell_order(json_data['data'])
+            print('res', res)
+            if 'output1' in res:
+                sell_order_no, sell_order_price, sell_order_qty = res['output1']
                 print("매도 주문 응답 정상", sell_order_no, sell_order_price, sell_order_qty)
                 kis_receiver.jango_df.loc[kis_receiver.jango_df['매수_주문번호'] == json_data['data']['order_number'], ['매도_주문번호', '매도_주문가격', '매도_주문수량']] = (sell_order_no, sell_order_price, sell_order_qty)
                 json_data = kis_receiver.jango_df.drop(columns='체결량').to_dict(orient="records")
                 data = {"type": "stock_data", "data": json_data}
                 await websocket_manager.manager.broadcast(json.dumps(data))
 
+            print("json.dumps(res['output2'])", json.dumps(res['output2']))
+            await websocket_manager.manager.broadcast(json.dumps(res['output2']))
     except Exception as e:
         print(["[main.py - 1 오류]"], e)
 

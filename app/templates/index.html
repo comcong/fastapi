@@ -38,19 +38,19 @@
         }
 
         th, td {
-    border: 1px solid #aaa;
-    padding: 8px;
-    text-align: center;
-    }
+            border: 1px solid #aaa;
+            padding: 8px;
+            text-align: center;
+        }
 
-    th {
-        background-color: #eee;
-    }
+        th {
+            background-color: #eee;
+        }
 
-    /* 정렬 아이콘 */
-    th {
-        cursor: pointer;
-    }
+        /* 정렬 아이콘 */
+        th {
+            cursor: pointer;
+        }
 
         #messages {
             margin-top: 20px;
@@ -262,12 +262,16 @@ function handleSellClick(orderNumber, stockCode, stockName, quantity, profitRate
         };
         ws.send(JSON.stringify(sellRequest));
         console.log('매도 요청 전송:', sellRequest);
+
+        // 버튼 상태 변경: 글씨 "매도중", 비활성화
+        buttonEl.textContent = "매도중";
+        buttonEl.disabled = true;
+
         alert("매도 주문이 정상적으로 전송되었습니다.");
     } else {
         console.log("사용자가 매도 주문을 취소했습니다.");
     }
 }
-
 
 // 서버 메시지 수신 처리
 ws.onmessage = function(event) {
@@ -365,7 +369,7 @@ ws.onmessage = function(event) {
             sellButton.textContent = row["매도_주문번호"] ? "정정" : "매도";
             sellButton.onclick = function() {
                 if (row["매도_주문번호"]) {
-                    alert("이미 매도 주문이 체결된 상태입니다.");
+                    alert("이미 매도 주문이 전송된 상태입니다.");
                     return;
                 }
                 const profitRate = calculateProfitRate(row.체결단가, row.현재가);
@@ -405,6 +409,24 @@ ws.onmessage = function(event) {
         div.textContent = `매도 결과: ${result.message}`;
         messageBox.appendChild(div);
         messageBox.scrollTop = messageBox.scrollHeight;
+
+        // 테이블에서 해당 매도 버튼 찾아 상태 업데이트
+        if (result.order_number) {
+            const rows = tableBody.querySelectorAll("tr");
+            rows.forEach(row => {
+                const orderNumCell = row.cells[0]; // 매수_주문번호 컬럼
+                const sellButton = row.querySelector(".sell-button");
+                if (orderNumCell && sellButton && orderNumCell.textContent === result.order_number) {
+                    if (result.success) {
+                        sellButton.textContent = "정정"; // 성공 시 '정정'
+                        sellButton.disabled = false;     // 활성화
+                    } else {
+                        sellButton.textContent = "매도"; // 실패 시 다시 '매도'
+                        sellButton.disabled = false;
+                    }
+                }
+            });
+        }
     }
 };
 

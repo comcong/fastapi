@@ -160,37 +160,6 @@ async def update_balance(tr_id=''):
             balance = d2_cash + 매입금액
             tot_acc_value = d2_cash + 평가금액
             acc_profit = tot_acc_value - balance
-
-            # data = {'balance': balance, 'tot_acc_value': tot_acc_value,  'acc_profit': acc_profit, 'd2_cash': d2_cash}
-            # balance_data = {"type": "balance", "data": data}
-            # await websocket_manager.manager.broadcast(json.dumps(balance_data))
-            # print('update_balance() 종료')
             return balance, tot_acc_value, acc_profit, d2_cash
         except Exception as e:
             print('update_balance() 에러:  ', e)
-
-# async def broadcast_stock_data(df, websocket_manager):
-#     """
-#     DataFrame을 WebSocket으로 전송.
-#     - '체결량' 컬럼 제거
-#     - NaN 값을 None으로 변환 (JS에서 null로 표시됨)
-#     - dict 형태로 변환 후 broadcast
-#     """
-#     def safe_value(v):
-#         if isinstance(v, float) and math.isnan(v):
-#             return None
-#         return v
-#
-#     def safe_dict(d):
-#         return {k: safe_value(v) for k, v in d.items()}
-#
-#     # '체결량' 컬럼 제거 후 dict 변환
-#     json_data = df.drop(columns='체결량').where(pd.notna(df), None).to_dict(orient="records")
-#     json_data = [safe_dict(row) for row in json_data]  # NaN → None 재확인
-#
-#     data = {"type": "stock_data", "data": json_data}
-#
-#     print("json_data", data)
-#
-#     # WebSocket broadcast
-#     await websocket_manager.manager.broadcast(json.dumps(data))
