@@ -239,38 +239,35 @@ function getProfitClass(profitRate) {
 }
 
 // 매도 버튼 클릭 함수
-function handleSellClick(orderNumber, stockCode, stockName, quantity, currentPrice, buttonEl) {
-    const input = prompt(
-        `매도 가격을 입력하세요.\n현재가: ${currentPrice}원`,
-        String(currentPrice)
-    );
-    if (input === null) return;
+function handleSellClick(orderNumber, stockCode, stockName, quantity, profitRate, buttonEl) {
+    // 안내 메시지 구성
+    const message =
+        `매도 주문을 확인해 주세요.\n\n` +
+        `종목명: ${stockName}\n` +
+        `종목코드: ${stockCode}\n` +
+        `수량: ${quantity}주\n` +
+        `수익률: ${profitRate}%\n\n` +
+        `이대로 매도하시겠습니까?`;
 
-    const trimmed = input.trim();
-    let chosenPrice = trimmed === '' ? Number(currentPrice) : Number(trimmed.replace(/,/g, ''));
-    if (isNaN(chosenPrice) || chosenPrice <= 0) {
-        alert('유효한 가격을 입력하세요.');
-        return;
+    // 확인 버튼 눌렀을 때만 매도 주문 전송
+    if (confirm(message)) {
+        const sellRequest = {
+            type: "sell_order",
+            data: {
+                order_number: orderNumber,
+                stock_code: stockCode,
+                stock_name: stockName,
+                quantity: quantity
+            }
+        };
+        ws.send(JSON.stringify(sellRequest));
+        console.log('매도 요청 전송:', sellRequest);
+        alert("매도 주문이 정상적으로 전송되었습니다.");
+    } else {
+        console.log("사용자가 매도 주문을 취소했습니다.");
     }
-
-    if (!confirm(`정말로 ${stockName}(${stockCode}) ${quantity}주를 매도하시겠습니까?\n매도 가격: ${chosenPrice}원`)) {
-        return;
-    }
-
-    // 매도 요청 객체 생성 및 전송
-    const sellRequest = {
-        type: "sell_order",
-        data: {
-            order_number: orderNumber,
-            stock_code: stockCode,
-            stock_name: stockName,
-            quantity: quantity,
-            current_price: String(chosenPrice)
-        }
-    };
-    ws.send(JSON.stringify(sellRequest));
-    console.log('매도 요청 전송:', sellRequest);
 }
+
 
 // 서버 메시지 수신 처리
 ws.onmessage = function(event) {
@@ -371,12 +368,13 @@ ws.onmessage = function(event) {
                     alert("이미 매도 주문이 체결된 상태입니다.");
                     return;
                 }
+                const profitRate = calculateProfitRate(row.체결단가, row.현재가);
                 handleSellClick(
                     row["매수_주문번호"],
                     row["종목코드"],
                     row["종목명"],
                     row["체결수량"],
-                    row["현재가"],
+                    profitRate,
                     this
                 );
             };
