@@ -35,17 +35,13 @@ def get_data():
         return None
 
 def del_and_insert(jango_df):
-    if not jango_df:
-        print("저장할 데이터가 없습니다.")
-        return
-
     try:
         # 1. 기존 데이터 삭제
         supabase.table("transaction_info").delete().neq("매수_주문번호", None).execute()
         print("기존 데이터 삭제 완료")
 
         # 2. 새 데이터 삽입
-        jango_data = jango_df.fillna(value=None).to_dict(orient="records")
+        jango_data = jango_df.to_dict(orient="records")
         supabase.table("transaction_info").insert(jango_data).execute()
         print("새 데이터 삽입 완료")
 
