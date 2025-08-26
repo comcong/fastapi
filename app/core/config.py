@@ -32,6 +32,12 @@ class Settings(BaseSettings):
         case_sensitive = True
 
     @property
+    def col_names(self) -> list:
+        col_names = ['매수_주문번호', '종목명', '종목코드', '체결시간', '주문수량', '체결수량',
+                     '체결단가', '현재가', '매도_주문가격', '매도_주문수량', '체결량', '체결잔량', '매도_주문번호']
+        return col_names
+
+    @property
     def ws_url(self) -> str:
         if self.KIS_USE_MOCK:
             return "ws://ops.koreainvestment.com:31000"

@@ -17,6 +17,7 @@ class kis_api:
         self.__trans_menulist = '고객ID|계좌번호|주문번호|원주문번호|매도매수구분|정정구분|주문종류|주문조건|종목코드|체결수량|체결단가|체결시간|거부여부|체결여부|접수여부|지점번호|주문수량|계좌명|호가조건가격|주문거래소구분|실시간체결창표시여부|종목명|필러'
         self.__yymmdd = datetime.now().strftime("%y%m%d")
         self.__sell_to_buy_order_map = {}
+        self.__col_names = settings.col_names
 
     # ============================================================= #
     # ================== 데이터 가공하는 부분 ======================== #
@@ -122,6 +123,8 @@ class kis_api:
                 print('새로운 종목코드 구독 추가')
                 await self.subscribe(ws=ws, tr_type='1', tr_id=tr_id, code_list=[tran_code])
             jango_df = pd.concat([jango_df, trans_df], ignore_index=True)
+            jango_df = jango_df[self.__col_names].where(pd.notna(jango_df), None)  # nan 을 None 으로 변환
+
             print('buy_update() 주문이 없는 경우 실행 완료')
             return jango_df
 

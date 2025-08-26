@@ -15,8 +15,9 @@ jango_df = None
 d2_cash = int(account_balance.get_balance())
 async def start_kis_receiver():
     global jango_df
-    col_names = ['매수_주문번호', '종목명', '종목코드', '체결시간', '주문수량', '체결수량', '체결단가', '현재가', '매도_주문가격', '매도_주문수량', '체결량', '체결잔량', '매도_주문번호']
-    jango_df = jango_db(col_names) #.sort_values(by='매수_주문번호')
+    # col_names = ['매수_주문번호', '종목명', '종목코드', '체결시간', '주문수량', '체결수량', '체결단가', '현재가', '매도_주문가격', '매도_주문수량', '체결량', '체결잔량', '매도_주문번호']
+    col_names = settings.col_names
+    jango_df = jango_db(col_names)
     print('jango_df_1', '\n', jango_df.shape)
     code_list = jango_df['종목코드'].unique().tolist()  # DB 에서 종목코드 가져옴
 
@@ -47,16 +48,13 @@ async def start_kis_receiver():
                                 print('매수 체결통보')
                                 jango_df = await kis.buy_update(ws=ws, jango_df=jango_df, trans_df=trans_df)
                                 print('jango_df_3', '\n', jango_df.shape)
-                                jango_df = jango_df[col_names]
 
                             elif trans_df['매도매수구분'].values[0] == '01':    # 01: 매도, 02: 매수
                                 print('매도 체결통보')
                                 print('체결수량:  ', trans_df.at[0, '체결수량'])
                                 jango_df = await kis.sell_update(ws=ws, jango_df=jango_df, trans_df=trans_df)
                                 print('jango_df_4', '\n', jango_df.shape)
-
-                            jango_df = jango_df.where(pd.notna(jango_df), None)  # nan 을 None 로 변환
-                            asyncio.create_task(send_update_balance(tr_id))
+                            asyncio.create_task(send_update_balance(tr_id))  # 백그라운드로 send_update_balance() 실행
 
                         jango_df = jango_df.sort_values(by='매수_주문번호')
                         print('jango_df_5', '\n', jango_df.shape)
