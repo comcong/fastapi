@@ -55,6 +55,7 @@ async def start_kis_receiver():
                                 jango_df = await kis.sell_update(ws=ws, jango_df=jango_df, trans_df=trans_df)
                                 print('jango_df_4', '\n', jango_df.shape)
 
+                            jango_df = jango_df.where(pd.notna(jango_df), None)  # nan 을 None 로 변환
                             asyncio.create_task(send_update_balance(tr_id))
 
                         jango_df = jango_df.sort_values(by='매수_주문번호')
@@ -62,6 +63,7 @@ async def start_kis_receiver():
                         cols = ['주문수량', '체결수량', '체결단가']
                         jango_df[cols] = jango_df[cols].apply(lambda col: col.astype(str).str.lstrip('0'))
                         print('jango_df_10', '\n', jango_df.shape)
+
                         json_data = jango_df.drop(columns='체결량').to_dict(orient="records")
                         data = {"type": "stock_data", "data": json_data}
                         print('json_data', data)
@@ -170,3 +172,29 @@ async def update_balance(tr_id=''):
             return balance, tot_acc_value, acc_profit, d2_cash
         except Exception as e:
             print('update_balance() 에러:  ', e)
+
+# async def broadcast_stock_data(df, websocket_manager):
+#     """
+#     DataFrame을 WebSocket으로 전송.
+#     - '체결량' 컬럼 제거
+#     - NaN 값을 None으로 변환 (JS에서 null로 표시됨)
+#     - dict 형태로 변환 후 broadcast
+#     """
+#     def safe_value(v):
+#         if isinstance(v, float) and math.isnan(v):
+#             return None
+#         return v
+#
+#     def safe_dict(d):
+#         return {k: safe_value(v) for k, v in d.items()}
+#
+#     # '체결량' 컬럼 제거 후 dict 변환
+#     json_data = df.drop(columns='체결량').where(pd.notna(df), None).to_dict(orient="records")
+#     json_data = [safe_dict(row) for row in json_data]  # NaN → None 재확인
+#
+#     data = {"type": "stock_data", "data": json_data}
+#
+#     print("json_data", data)
+#
+#     # WebSocket broadcast
+#     await websocket_manager.manager.broadcast(json.dumps(data))

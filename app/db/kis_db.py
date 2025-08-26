@@ -3,6 +3,7 @@ from supabase import create_client, Client
 from app.core.config import settings
 import random
 import traceback
+
 url: str = settings.SUPABASE_URL
 key: str = settings.SUPABASE_KEY
 supabase: Client = create_client(url, key)
@@ -40,8 +41,10 @@ def del_and_insert(jango_df):
         supabase.table("transaction_info").delete().neq("매수_주문번호", None).execute()
         print("기존 데이터 삭제 완료")
 
-        # 2. 새 데이터 삽입
+        # 2. records 생성
         jango_data = jango_df.to_dict(orient="records")
+
+        # 1. 새로운 데이터 삽입
         if jango_data:
             supabase.table("transaction_info").insert(jango_data).execute()
             print("새 데이터 삽입 완료")
