@@ -48,7 +48,7 @@ def del_and_insert(safe_df):
         # 1. 새로운 데이터 삽입
         if json_data:  # 비어있으면 False, 하나라도 있으면 True
             response = supabase.table("transaction_info").insert(json_data).execute()
-            print("insert response:", response)
+            print("삽입한 새로운 데이터", response)
         else:
             print("데이터가 없어서 insert 생략")
     except Exception as e:
@@ -97,46 +97,6 @@ def upsert_data(data: list):
 def generate_order_id():
     number = random.randint(1, 999)  # 1부터 999까지
     return f"ORD{number:03d}"  # 3자리로 포맷팅 (예: 1 → 001)
-
-
-def insert_and_delete(safe_df):
-    try:
-        # 0. 배치 ID 추가 (현재 시간 기반)
-        batch_id = datetime.now().strftime("%Y%m%d%H%M%S")
-        safe_df = safe_df.copy()
-        safe_df["batch_id"] = batch_id
-
-        # 1. records 생성
-        json_data = safe_df.to_dict(orient="records")
-
-        # 2. 새로운 데이터 삽입
-        if not json_data:
-            print("데이터가 없어서 insert 생략")
-            return
-
-        response = supabase.table("transaction_info").insert(json_data).execute()
-        print("insert response:", response)
-
-        # Supabase 응답 검사
-        if hasattr(response, "data") and response.data:
-            print("새 데이터 삽입 성공, 건수:", len(response.data))
-
-            # 3. 기존 데이터 삭제 (이번 배치 제외)
-            del_response = (
-                supabase.table("transaction_info")
-                .delete()
-                .neq("batch_id", batch_id)
-                .execute()
-            )
-            print("기존 데이터 삭제 완료:", del_response)
-        else:
-            print("삽입 실패 또는 응답 없음:", response)
-
-    except Exception as e:
-        print("트랜잭션 처리 중 오류 발생:", e)
-        print(traceback.format_exc())
-
-
 
 
 if __name__ == '__main__':

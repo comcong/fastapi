@@ -19,47 +19,43 @@ templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 @asynccontextmanager
 async def lifespan(fastapi_app: FastAPI):
+    # 1. 백그라운드 task 시작
     task = asyncio.create_task(kis_receiver.start_kis_receiver())  # 백그라운드에서 start_kis_receiver() 실행
     try:
-
         yield
-
     finally:
-
-        print("앱 종료 전 cleanup 시작")
-        # 1. task 종료 처리
+        print("앱 종료 전 cleanup 시작", flush=True)
+        # 2. 백그라운드 task 종료
         task.cancel()
-        error_in_task = False
         try:
             await task
         except asyncio.CancelledError:  # 정상적인 cancel
-            pass
+            pass # 정상 취소
         except Exception as e:
-            error_in_task = True
-            print("백그라운드 task 에러:", e)
+            print("백그라운드 task 에러:", e, flush=True)
 
-        # 2. 안전하게 jango_df 복사
+        # 3. DataFrame 복사
         safe_df = None
         try:
             safe_df = kis_receiver.jango_df.copy()
-            print("jango_df 복사 성공, shape:", safe_df.shape)
-            print("safe_df.info(): ", '\n')
-            safe_df.info()
+            print("jango_df 복사 성공, shape:", safe_df.shape, flush=True)
+            print("safe_df.info(): ", '\n', safe_df.info(), flush=True)
 
         except Exception as e:
             print("jango_df 복사 실패:", e)
 
 
-        # 3. task 가 정상 종료 + safe_df 유효할 때만 DB 저장
-        if not error_in_task and safe_df is not None:
+        # 4. DB 저장
+        if safe_df is not None:
             try:
-                kis_db.del_and_insert(safe_df)
-                print("DB 트랜잭션 저장 완료")
+                # sync DB 함수는 to_thread로 안전하게 await
+                await asyncio.to_thread(kis_db.del_and_insert, safe_df)
+                print("DB 트랜잭션 저장 완료", flush=True)
             except Exception as e:
-                print("DB 처리 중 에러: ", e)
+                print("DB 처리 중 에러: ", e, flush=True)
 
         else:
-            print('task 실패 또는 safe_df None → DB 저장 생략')
+            print('task 실패 또는 safe_df None → DB 저장 생략', flush=True)
 
 app = FastAPI(lifespan=lifespan)
 
