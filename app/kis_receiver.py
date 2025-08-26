@@ -15,9 +15,7 @@ jango_df = None
 d2_cash = int(account_balance.get_balance())
 async def start_kis_receiver():
     global jango_df
-    # col_names = ['매수_주문번호', '종목명', '종목코드', '체결시간', '주문수량', '체결수량', '체결단가', '현재가', '매도_주문가격', '매도_주문수량', '체결량', '체결잔량', '매도_주문번호']
-    col_names = settings.col_names
-    jango_df = jango_db(col_names)
+    jango_df = jango_db(settings.col_names)
     print('jango_df_1', '\n', jango_df.shape)
     code_list = jango_df['종목코드'].unique().tolist()  # DB 에서 종목코드 가져옴
 
