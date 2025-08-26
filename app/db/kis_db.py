@@ -42,9 +42,11 @@ def del_and_insert(jango_df):
 
         # 2. 새 데이터 삽입
         jango_data = jango_df.to_dict(orient="records")
-        supabase.table("transaction_info").insert(jango_data).execute()
-        print("새 데이터 삽입 완료")
-
+        if jango_data:
+            supabase.table("transaction_info").insert(jango_data).execute()
+            print("새 데이터 삽입 완료")
+        else:
+            print("데이터가 없어서 insert 생략")
     except Exception as e:
         print("트랜잭션 처리 중 오류 발생:", e)
         print(traceback.format_exc())
