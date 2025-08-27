@@ -58,8 +58,8 @@ async def start_kis_receiver():
                                 print('jango_df_4', '\n', jango_df.shape)
                             data['새현재가'] = data['체결단가']
                             jango_df = update_price(data[['종목코드', '새현재가']].copy())
-                            # asyncio.create_task(send_update_balance(tr_id))  # 백그라운드로 send_update_balance() 실행
-                            await send_update_balance(tr_id)
+                            asyncio.create_task(send_update_balance(tr_id))  # 백그라운드로 send_update_balance() 실행
+                            # await send_update_balance(tr_id)
 
                         jango_df = jango_df.sort_values(by='매수_주문번호')
                         print('jango_df_5', '\n', jango_df.shape)
@@ -163,9 +163,12 @@ async def update_balance(tr_id=''):
         return None  # None 을 반환하고 종료
     else:           # 현재가가 모든 행에 전부 있으면
         try:
-            매입금액 = int((jango_df['체결수량'].astype('int') * jango_df['체결단가'].astype('int')).sum())
+            수량 = jango_df['체결잔량'].fillna(jango_df['체결수량']).astype(int)
+            매입금액 = int((수량 * jango_df['체결단가'].astype(int)).sum())
+            # 매입금액 = int((jango_df['체결수량'].astype('int') * jango_df['체결단가'].astype('int')).sum())
             매입수수료 = int(매입금액 * fee_rate)
-            평가금액 = int((jango_df['체결수량'].astype('int') * jango_df['현재가'].astype('int')).sum())
+            # 평가금액 = int((jango_df['체결수량'].astype('int') * jango_df['현재가'].astype('int')).sum())
+            평가금액 = int((수량 * jango_df['현재가'].astype(int)).sum())
             매도수수료 = int(평가금액 * fee_rate)
             세금 = int(평가금액 * tax_rate)
             평가금액 = 평가금액 - 매입수수료 - 매도수수료 - 세금
