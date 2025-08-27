@@ -46,19 +46,20 @@ async def start_kis_receiver():
 
                         elif (tr_id in ['H0STCNI9', 'H0STCNI0']) and (data['체결여부'].values.tolist()[0] == '2'):  # 체결통보 데이터
                             trans_df = data.copy()
-                            if trans_df['매도매수구분'].values[0] == '02':    # 01: 매도, 02: 매수
+                            if trans_df['매도매수구분'].values[0] == '02':  # 매수       # 01: 매도, 02: 매수
                                 print('매수 체결통보')
                                 jango_df = await kis.buy_update(ws=ws, jango_df=jango_df, trans_df=trans_df)
                                 print('jango_df_3', '\n', jango_df.shape)
 
-                            elif trans_df['매도매수구분'].values[0] == '01':    # 01: 매도, 02: 매수
+                            elif trans_df['매도매수구분'].values[0] == '01': # 매도      # 01: 매도, 02: 매수
                                 print('매도 체결통보')
                                 print('체결수량:  ', trans_df.at[0, '체결수량'])
                                 jango_df = await kis.sell_update(ws=ws, jango_df=jango_df, trans_df=trans_df)
                                 print('jango_df_4', '\n', jango_df.shape)
                             data['새현재가'] = data['체결단가']
                             jango_df = update_price(data[['종목코드', '새현재가']].copy())
-                            asyncio.create_task(send_update_balance(tr_id))  # 백그라운드로 send_update_balance() 실행
+                            # asyncio.create_task(send_update_balance(tr_id))  # 백그라운드로 send_update_balance() 실행
+                            await send_update_balance(tr_id)
 
                         jango_df = jango_df.sort_values(by='매수_주문번호')
                         print('jango_df_5', '\n', jango_df.shape)
