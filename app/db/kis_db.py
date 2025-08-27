@@ -47,8 +47,8 @@ def del_and_insert(safe_df):
 
         # 1. 새로운 데이터 삽입
         if json_data:  # 비어있으면 False, 하나라도 있으면 True
-            response = supabase.table("transaction_info").insert(json_data).execute()
-            print("삽입한 새로운 데이터", response)
+            res = supabase.table("transaction_info").insert(json_data).execute()
+            print("삽입한 새로운 데이터", res)
         else:
             print("데이터가 없어서 insert 생략")
     except Exception as e:
@@ -57,11 +57,10 @@ def del_and_insert(safe_df):
 
 
 
-def insert_data(data):
+def insert_data(d2_cash):
     try:
-        for i in data:
-            supabase.table("transaction_info").insert(i).execute()
-        print("데이터 삽입 성공")
+        res = supabase.table("acc_jango").insert(d2_cash).execute()
+        print("데이터 삽입 성공", res)
     except Exception as e:
         print("데이터 삽입 실패:", e)
 

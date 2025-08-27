@@ -41,9 +41,12 @@ def get_balance(request=None):
 
     response = requests.get(url, headers=headers, params=params)
     result = response.json()
-    d2_cash = result['output2'][0]['prvs_rcdl_excc_amt']
-    return d2_cash
-
+    print('account_balance.py_get_balance() 에러: ', result)
+    if 'output2' in result:
+        d2_cash = result['output2'][0]['prvs_rcdl_excc_amt']
+        return d2_cash
+    else:
+        return None
 
 if __name__ == '__main__':
     res = get_balance()

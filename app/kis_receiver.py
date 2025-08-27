@@ -4,6 +4,7 @@ import json
 import pandas as pd
 import websockets
 import math
+from datetime import datetime
 
 import websocket_manager
 from app.core.config import settings
@@ -84,7 +85,7 @@ async def start_kis_receiver():
 
 def jango_db(col_names):
     supa_db = kis_db.get_data()
-    jango_df = pd.DataFrame(supa_db, columns=col_names).sort_values('체결시간')
+    jango_df = pd.DataFrame(supa_db, columns=col_names).sort_values('매수_주문번호')
     return jango_df
 
 async def send_initial_data(websocket):
@@ -143,8 +144,13 @@ async def update_balance(tr_id=''):
     global d2_cash
     fee_rate = 0.00015
     tax_rate = 0.0015
+    now = datetime.now()
+    time_str = now.strftime("%Y%m%d%H%M%S")
+
     if tr_id in ['H0STCNI9', 'H0STCNI0']:
-        d2_cash = int(account_balance.get_balance())
+        res = account_balance.get_balance()
+        if res:
+            d2_cash = int(res)
 
     mask = (jango_df['현재가'] == "") | (jango_df['현재가'].isna())  # 현재가가 없는 행 찾기
     if mask.any():  # 현재가가 없는 행이 하나라도 있으면 패스
@@ -160,6 +166,20 @@ async def update_balance(tr_id=''):
             balance = d2_cash + 매입금액
             tot_acc_value = d2_cash + 평가금액
             acc_profit = tot_acc_value - balance
+
+            if tr_id in ['H0STCNI9', 'H0STCNI0']:
+                jango_data = {
+                    '시간': time_str,
+                    '잔고': balance
+                }
+                kis_db.insert_data(jango_data)
+
+            계좌_수익률 = acc_profit / balance  * 100
+            print('계좌_수익률: ', 계좌_수익률)
+
             return balance, tot_acc_value, acc_profit, d2_cash
+
+
+
         except Exception as e:
             print('update_balance() 에러:  ', e)
