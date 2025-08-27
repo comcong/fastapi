@@ -57,12 +57,12 @@ def del_and_insert(safe_df):
 
 
 
-def insert_data(d2_cash):
+def insert_data(jango_data):
     try:
-        res = supabase.table("acc_jango").insert(d2_cash).execute()
-        print("데이터 삽입 성공", res)
+        res = supabase.table("acc_jango").insert(jango_data).execute()
+        print("jango_data 데이터 삽입 성공", res)
     except Exception as e:
-        print("데이터 삽입 실패:", e)
+        print("jango_data 데이터 삽입 실패:", e)
 
 def delete_data():
     try:

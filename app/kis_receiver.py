@@ -164,6 +164,7 @@ async def update_balance(tr_id=''):
             세금 = int(평가금액 * tax_rate)
             평가금액 = 평가금액 - 매입수수료 - 매도수수료 - 세금
             balance = d2_cash + 매입금액
+            print('balance: ', balance)
             tot_acc_value = d2_cash + 평가금액
             acc_profit = tot_acc_value - balance
 
@@ -172,6 +173,7 @@ async def update_balance(tr_id=''):
                     '시간': time_str,
                     '잔고': balance
                 }
+                print('jango_data: ', jango_data)
                 kis_db.insert_data(jango_data)
 
             계좌_수익률 = acc_profit / balance  * 100
