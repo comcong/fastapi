@@ -29,19 +29,15 @@ async def start_kis_receiver():
                 while True:
                     raw_data = await ws.recv()
                     data = await kis.make_data(raw_data)  # 데이터 가공
-                    print("수신된 가공 데이터: ")
-                    if isinstance(data, pd.DataFrame):
-                        print(data.columns)
-                    else:
-                        print(data)
 
                     if isinstance(data, pd.DataFrame):
+                        print("수신된 가공 데이터: ")
+                        print(data.columns)
                         tr_id = data.iloc[0]['tr_id']
                         if tr_id == 'H0STCNT0':            # 실시간 현재가가 들어오는 경우
                             print('tr_id == "H0STCNT0":')
                             jango_df = update_price(data[['종목코드', '새현재가']].copy())
                             print('jango_df_2', '\n', jango_df.shape)
-                            # json_data = jango_df.drop(columns='체결량').to_dict(orient="records")
                             await send_update_balance()
 
                         elif (tr_id in ['H0STCNI9', 'H0STCNI0']) and (data['체결여부'].values.tolist()[0] == '2'):  # 체결통보 데이터
@@ -74,6 +70,8 @@ async def start_kis_receiver():
                         print('데이터프레임 전송완료')
 
                     else:
+                        print("수신된 가공 데이터: ")
+                        print(data)
                         msg_data = {"type": "message", "data": data}
                         await websocket_manager.manager.broadcast(json.dumps(msg_data))
                         print('json 전송완료')
@@ -95,25 +93,15 @@ def jango_db(col_names):
     return jango_df
 
 async def send_initial_data(websocket):
-    # jango_json_data = jango_df.fillna('').to_dict(orient="records")
     jango_json_data = jango_df.to_dict(orient="records")
     print('직렬화 전')
     print(jango_json_data)
     stock_data = {"type": "stock_data", "data": jango_json_data}
-    # stock_data = safe_for_json(stock_data)
     await websocket.send_text(json.dumps(stock_data))
-
-def safe_for_json(d):
-    for item in d['data']:
-        for k, v in item.items():
-            if isinstance(v, float) and math.isnan(v):
-                item[k] = ""  # 또는 None, "NaN" 등
-    return d
-
 
 def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
     print('update_price() 실행')
-    global jango_df  # 실시간 현재가 데이터 전역변수 사용
+    global jango_df
     jango_df = pd.merge(jango_df, df, on='종목코드', how='left')
     print('jango_df_7', '\n', jango_df.shape)
     mask = jango_df["새현재가"].notna()
