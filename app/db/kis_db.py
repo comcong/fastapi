@@ -2,7 +2,6 @@
 from supabase import create_client, Client
 from app.core.config import settings
 import random
-from datetime import datetime
 import traceback
 
 url: str = settings.SUPABASE_URL
@@ -48,7 +47,8 @@ def del_and_insert(safe_df):
         # 1. 새로운 데이터 삽입
         if json_data:  # 비어있으면 False, 하나라도 있으면 True
             res = supabase.table("transaction_info").insert(json_data).execute()
-            print("삽입한 새로운 데이터", res)
+            res_len = len(res.data)
+            print(f"삽입한 새로운 데이터 갯수: {res_len} 개 ", res)
         else:
             print("데이터가 없어서 insert 생략")
     except Exception as e:
@@ -60,7 +60,7 @@ def del_and_insert(safe_df):
 def insert_data(jango_data):
     try:
         res = supabase.table("acc_jango").insert(jango_data).execute()
-        print("jango_data 데이터 삽입 성공", res)
+        print("jango_data 데이터 삽입 성공", res.data[0]['잔고'])
     except Exception as e:
         print("jango_data 데이터 삽입 실패:", e)
 

@@ -30,7 +30,10 @@ async def start_kis_receiver():
                     raw_data = await ws.recv()
                     data = await kis.make_data(raw_data)  # 데이터 가공
                     print("수신된 가공 데이터: ")
-                    print(data)
+                    if isinstance(data, pd.DataFrame):
+                        print(data.columns)
+                    else:
+                        print(data)
 
                     if isinstance(data, pd.DataFrame):
                         tr_id = data.iloc[0]['tr_id']
@@ -53,6 +56,8 @@ async def start_kis_receiver():
                                 print('체결수량:  ', trans_df.at[0, '체결수량'])
                                 jango_df = await kis.sell_update(ws=ws, jango_df=jango_df, trans_df=trans_df)
                                 print('jango_df_4', '\n', jango_df.shape)
+                            data['새현재가'] = data['체결단가']
+                            jango_df = update_price(data[['종목코드', '새현재가']].copy())
                             asyncio.create_task(send_update_balance(tr_id))  # 백그라운드로 send_update_balance() 실행
 
                         jango_df = jango_df.sort_values(by='매수_주문번호')
@@ -167,6 +172,8 @@ async def update_balance(tr_id=''):
             print('balance: ', balance)
             tot_acc_value = d2_cash + 평가금액
             acc_profit = tot_acc_value - balance
+            print('balance: ', balance)
+
 
             if tr_id in ['H0STCNI9', 'H0STCNI0']:
                 jango_data = {
