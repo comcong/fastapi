@@ -153,14 +153,25 @@ async def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
                             }).to_dict(orient="records"))
                 print('send_data', send_data)
 
-                for i in send_data:
-                    # asyncio.create_task(kis.sell_order(i))
-                    await kis.sell_order(i)
+                for json_data in send_data:
+                    # asyncio.create_task(kis.sell_order(json_data))
+                    res = await kis.sell_order(json_data)
+                    print('res', res)
+                    if 'output1' in res:
+                        sell_order_no, sell_order_price, sell_order_qty = res['output1']
+                        print("매도 주문 응답 정상", sell_order_no, sell_order_price, sell_order_qty)
+                        jango_df.loc[jango_df['매수_주문번호'] == json_data['order_number'], ['매도_주문번호', '매도_주문가격', '매도_주문수량']] = (sell_order_no, sell_order_price, sell_order_qty)
+                        json_data_html = jango_df.drop(columns='체결량').to_dict(orient="records")
+                        data = {"type": "stock_data", "data": json_data_html}
+                        await websocket_manager.manager.broadcast(json.dumps(data))
+
+                    print("json.dumps(res['output2'])", json.dumps(res['output2']))
+                    await websocket_manager.manager.broadcast(json.dumps(res['output2']))
                     await asyncio.sleep(0.1)
 
 
-            # else:
-            #     print('손실중...')
+            else:
+                print('손실중...')
 
 
     print('update_price() 종료')
