@@ -36,7 +36,7 @@ async def start_kis_receiver():
                         tr_id = data.iloc[0]['tr_id']
                         if tr_id == 'H0STCNT0':            # 실시간 현재가가 들어오는 경우
                             print('tr_id == "H0STCNT0":')
-                            jango_df = update_price(data[['종목코드', '새현재가']].copy())
+                            jango_df = await update_price(data[['종목코드', '새현재가']].copy())
                             print('jango_df_2', '\n', jango_df.shape)
                             await send_update_balance()
 
@@ -53,9 +53,9 @@ async def start_kis_receiver():
                                 jango_df = await kis.sell_update(ws=ws, jango_df=jango_df, trans_df=trans_df)
                                 print('jango_df_4', '\n', jango_df.shape)
                             data['새현재가'] = data['체결단가']
-                            jango_df = update_price(data[['종목코드', '새현재가']].copy())
-                            asyncio.create_task(send_update_balance(tr_id))  # 백그라운드로 send_update_balance() 실행
-                            # await send_update_balance(tr_id)
+                            jango_df = await update_price(data[['종목코드', '새현재가']].copy())
+                            # asyncio.create_task(send_update_balance(tr_id))  # 백그라운드로 send_update_balance() 실행
+                            await send_update_balance(tr_id)
 
                         jango_df = jango_df.sort_values(by='매수_주문번호')
                         print('jango_df_5', '\n', jango_df.shape)
@@ -99,7 +99,7 @@ async def send_initial_data(websocket):
     stock_data = {"type": "stock_data", "data": jango_json_data}
     await websocket.send_text(json.dumps(stock_data))
 
-def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
+async def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
     print('update_price() 실행')
     global jango_df
     jango_df = pd.merge(jango_df, df, on='종목코드', how='left')
@@ -113,17 +113,57 @@ def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
     # 수익률 계산
     fee_rate = 0.00015
     tax_rate = 0.0015
-    mask = pd.to_numeric(jango_df["현재가"], errors="coerce").notna()
-    매수가 = jango_df.loc[mask, '체결단가'].astype(int)
-    매도가 = jango_df.loc[mask, '현재가'].astype(int)
-    매수_수수료 = 매수가 * fee_rate
-    매도_수수료 = 매도가 * fee_rate
-    세금 = 매도가 * tax_rate
-    수익률 = round((매도가 - 매수가 - 매수_수수료 - 매도_수수료 - 세금) / 매수가 * 100, 2)
-    print('수익률: ', '\n', 수익률, '\n')
+    if jango_df['현재가'].notna().all():
+        print('현재가에 모두 값이 있음')
+        수량 = jango_df['체결수량'].astype('int')
+        매수가 = jango_df['체결단가'].astype('int')
+        현재가 = jango_df['현재가'].astype('int')
+
+        print('수량: ', 수량.sum())
+        print('매입단가: ', round(((매수가 * 수량).sum()) / 수량.sum(), 2))
+
+        매입금액 = (매수가 * 수량).sum()
+
+        print('매입금액: ', 매입금액)
+        평가금액 = (현재가 * 수량).sum()
+        print('평가금액: ', 평가금액)
+        세전_수익금 = 평가금액 - 매입금액
+        print('세전_수익금: ', 세전_수익금)
+
+        매수_수수료 = 매입금액 * fee_rate
+        매도_수수료 = 평가금액 * fee_rate
+        세금 = 평가금액 * tax_rate
+        세후_수익금 = 세전_수익금 - 매수_수수료 - 매도_수수료 - 세금
+        print('세후_수익금: ', 세후_수익금)
+
+        수익률 = 세후_수익금 / 매입금액
+        수익률 = round(수익률 * 100, 2)
+        print('수익률: ', '\n', 수익률, '\n')
+
+        if jango_df['매도_주문번호'].isna().all():
+            if 수익률 > -100:
+                print('수익중..')
+                # {"order_number": "2508280000001845", "stock_code": "233740", "stock_name": "KODEX 코스닥150레버리지", "quantity": "1"}}
+                send_data = (jango_df[['매수_주문번호', '종목코드', '종목명', '체결수량']].
+                             rename(columns={
+                                    '매수_주문번호': 'order_number',
+                                    '종목코드': 'stock_code',
+                                    '종목명': 'stock_name',
+                                    '체결수량': 'quantity'
+                            }).to_dict(orient="records"))
+                print('send_data', send_data)
+
+                for i in send_data:
+                    # asyncio.create_task(kis.sell_order(i))
+                    await kis.sell_order(i)
+                    await asyncio.sleep(0.1)
+
+
+            # else:
+            #     print('손실중...')
+
 
     print('update_price() 종료')
-
     return jango_df
 
 async def send_update_balance(tr_id=''):
@@ -174,9 +214,6 @@ async def update_balance(tr_id=''):
                 }
                 print('jango_data: ', jango_data)
                 kis_db.insert_data(jango_data)
-
-            계좌_수익률 = acc_profit / balance  * 100
-            print('계좌_수익률: ', 계좌_수익률)
 
             return balance, tot_acc_value, acc_profit, d2_cash
 

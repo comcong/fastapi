@@ -140,7 +140,9 @@ class kis_api:
             buy_ord_num = self.__sell_to_buy_order_map[sell_ord_num]
             if buy_ord_num in jango_df['매수_주문번호'].values:  # 주문번호가 존재하는지 확인
                 idx = jango_df[jango_df['매수_주문번호'] == buy_ord_num].index[0] # 기존 주문번호가 있는 행번호 가져오기
-                주문수량 = int(jango_df.at[idx, '매도_주문수량'])
+                주문수량 = int(jango_df.at[idx, '매도_주문수량'])  # 에러발생
+                # start_kis_receiver 예외: int() argument must be a string, a bytes - like object or a real number, not 'NoneType'
+
                 print('주문수량', 주문수량)
                 체결수량 = int(trans_df['체결수량'][0])
                 print('체결수량', 체결수량)
