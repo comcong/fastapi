@@ -134,6 +134,8 @@ class kis_api:
         print(trans_df)
         sell_ord_num = trans_df['주문번호'].values[0]
         print('self.__sell_to_buy_order_map', self.__sell_to_buy_order_map)
+        print(len(self.__sell_to_buy_order_map), ': 개')
+
         print('sell_ord_num', sell_ord_num)
 
         if sell_ord_num in self.__sell_to_buy_order_map:
@@ -160,7 +162,7 @@ class kis_api:
                 if 누적체결량 == 주문수량:  # 전부 체결되면 행 제거
                     print('전부체결')
                     jango_df.drop(index=idx, inplace=True)
-
+                    del self.__sell_to_buy_order_map[sell_ord_num]  # 매도 완료된 오더주문번호 삭제
                     tran_code = trans_df['종목코드'].values[0]
                     code_list = jango_df['종목코드'].unique().tolist()
                     tr_id = 'H0STCNT0'
@@ -243,7 +245,7 @@ class kis_api:
             buy_order_no = json_data.get("order_number")
             url = f"{settings.rest_url}/uapi/domestic-stock/v1/trading/order-cash"
             code = json_data['stock_code']
-            order_type = '04'
+            order_type = '01'
             qty = json_data['quantity']
             # price = json_data['current_price']
             price = '0'
@@ -259,7 +261,7 @@ class kis_api:
 
             body = {
                 "CANO": settings.KIS_CANO,  # 계좌번호 앞 8자리
-                "ACNT_PRDT_CD": settings.KIS_ACNT_PRDT_CD,  # 계좌상품코드(뒤 2자리)
+                "ACNT_PRDT_CD": settings.KIS_ACNT_PRDT_CD,   # 계좌상품코드(뒤 2자리)
                 "PDNO": code,                                # 종목코드
                 "ORD_DVSN": order_type,                      # 00: 지정가, 03: 시장가
                 "ORD_QTY": qty,                              # 수량

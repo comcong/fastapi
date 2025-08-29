@@ -113,8 +113,7 @@ async def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
     # 수익률 계산
     fee_rate = 0.00015
     tax_rate = 0.0015
-    if jango_df['현재가'].notna().all():
-        print('현재가에 모두 값이 있음')
+    if jango_df.shape[0] > 0:
         수량 = jango_df['체결수량'].astype('int')
         매수가 = jango_df['체결단가'].astype('int')
         현재가 = jango_df['현재가'].astype('int')
@@ -123,7 +122,6 @@ async def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
         print('매입단가: ', round(((매수가 * 수량).sum()) / 수량.sum(), 2))
 
         매입금액 = (매수가 * 수량).sum()
-
         print('매입금액: ', 매입금액)
         평가금액 = (현재가 * 수량).sum()
         print('평가금액: ', 평가금액)
@@ -140,8 +138,9 @@ async def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
         수익률 = round(수익률 * 100, 2)
         print('수익률: ', '\n', 수익률, '\n')
 
+        print("jango_df['매도_주문번호']", jango_df['매도_주문번호'].isna().all())
         if jango_df['매도_주문번호'].isna().all():
-            if 수익률 > -100:
+            if 수익률 > -3:
                 print('수익중..')
                 # {"order_number": "2508280000001845", "stock_code": "233740", "stock_name": "KODEX 코스닥150레버리지", "quantity": "1"}}
                 send_data = (jango_df[['매수_주문번호', '종목코드', '종목명', '체결수량']].
@@ -167,7 +166,7 @@ async def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
 
                     print("json.dumps(res['output2'])", json.dumps(res['output2']))
                     await websocket_manager.manager.broadcast(json.dumps(res['output2']))
-                    await asyncio.sleep(0.1)
+                    # await asyncio.sleep(0.2)
 
 
             else:
