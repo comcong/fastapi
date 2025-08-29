@@ -23,6 +23,9 @@ class kis_api:
     # ================== 데이터 가공하는 부분 ======================== #
     # ============================================================= #
 
+    def get_sell_to_buy_order_map(self):
+        return self.__sell_to_buy_order_map
+
     async def make_data(self, row_data):
         try:                                             # 문자열이 '|' 로 구분된 문자열인 경우
             listed_data = row_data.split('|')

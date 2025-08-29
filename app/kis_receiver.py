@@ -108,12 +108,15 @@ async def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
     jango_df.loc[mask, "현재가"] = jango_df.loc[mask, "새현재가"]
     jango_df = jango_df.drop(columns=['새현재가'])
     print('jango_df_8', '\n', jango_df.shape)
+    sell_to_buy_order_map = kis.get_sell_to_buy_order_map()
 
+    # 잔고테이블의 행이 1개 이상 있고, 딕셔너리가 비어 있을 때
+    if (jango_df.shape[0] > 0) and not sell_to_buy_order_map:
+        print('kis.__sell_to_buy_order_map', sell_to_buy_order_map)
+        # 수익률 계산
+        fee_rate = 0.00015
+        tax_rate = 0.0015
 
-    # 수익률 계산
-    fee_rate = 0.00015
-    tax_rate = 0.0015
-    if jango_df.shape[0] > 0:
         수량 = jango_df['체결수량'].astype('int')
         매수가 = jango_df['체결단가'].astype('int')
         현재가 = jango_df['현재가'].astype('int')
@@ -138,39 +141,41 @@ async def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
         수익률 = round(수익률 * 100, 2)
         print('수익률: ', '\n', 수익률, '\n')
 
-        print("jango_df['매도_주문번호']", jango_df['매도_주문번호'].isna().all())
-        if jango_df['매도_주문번호'].isna().all():
-            if 수익률 > -3:
-                print('수익중..')
-                # {"order_number": "2508280000001845", "stock_code": "233740", "stock_name": "KODEX 코스닥150레버리지", "quantity": "1"}}
-                send_data = (jango_df[['매수_주문번호', '종목코드', '종목명', '체결수량']].
-                             rename(columns={
-                                    '매수_주문번호': 'order_number',
-                                    '종목코드': 'stock_code',
-                                    '종목명': 'stock_name',
-                                    '체결수량': 'quantity'
-                            }).to_dict(orient="records"))
-                print('send_data', send_data)
+        # print("jango_df['매도_주문번호']", jango_df['매도_주문번호'].isna().all())
+        # if jango_df['매도_주문번호'].isna().all():
+        # if not kis.__sell_to_buy_order_map:
 
-                for json_data in send_data:
-                    # asyncio.create_task(kis.sell_order(json_data))
-                    res = await kis.sell_order(json_data)
-                    print('res', res)
-                    if 'output1' in res:
-                        sell_order_no, sell_order_price, sell_order_qty = res['output1']
-                        print("매도 주문 응답 정상", sell_order_no, sell_order_price, sell_order_qty)
-                        jango_df.loc[jango_df['매수_주문번호'] == json_data['order_number'], ['매도_주문번호', '매도_주문가격', '매도_주문수량']] = (sell_order_no, sell_order_price, sell_order_qty)
-                        json_data_html = jango_df.drop(columns='체결량').to_dict(orient="records")
-                        data = {"type": "stock_data", "data": json_data_html}
-                        await websocket_manager.manager.broadcast(json.dumps(data))
+        if 수익률 > 3:
+            print('수익중..')
+            # {"order_number": "2508280000001845", "stock_code": "233740", "stock_name": "KODEX 코스닥150레버리지", "quantity": "1"}}
+            send_data = (jango_df[['매수_주문번호', '종목코드', '종목명', '체결수량']].
+                         rename(columns={
+                                '매수_주문번호': 'order_number',
+                                '종목코드': 'stock_code',
+                                '종목명': 'stock_name',
+                                '체결수량': 'quantity'
+                        }).to_dict(orient="records"))
+            print('send_data', send_data)
 
-                    print("json.dumps(res['output2'])", json.dumps(res['output2']))
-                    await websocket_manager.manager.broadcast(json.dumps(res['output2']))
-                    # await asyncio.sleep(0.2)
+            for json_data in send_data:
+                # asyncio.create_task(kis.sell_order(json_data))
+                res = await kis.sell_order(json_data)
+                print('res', res)
+                if 'output1' in res:
+                    sell_order_no, sell_order_price, sell_order_qty = res['output1']
+                    print("매도 주문 응답 정상", sell_order_no, sell_order_price, sell_order_qty)
+                    jango_df.loc[jango_df['매수_주문번호'] == json_data['order_number'], ['매도_주문번호', '매도_주문가격', '매도_주문수량']] = (sell_order_no, sell_order_price, sell_order_qty)
+                    json_data_html = jango_df.drop(columns='체결량').to_dict(orient="records")
+                    data = {"type": "stock_data", "data": json_data_html}
+                    await websocket_manager.manager.broadcast(json.dumps(data))
+
+                print("json.dumps(res['output2'])", json.dumps(res['output2']))
+                await websocket_manager.manager.broadcast(json.dumps(res['output2']))
+                await asyncio.sleep(0.5)
 
 
-            else:
-                print('손실중...')
+        else:
+            print('손실중...')
 
 
     print('update_price() 종료')
