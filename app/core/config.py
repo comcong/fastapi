@@ -72,5 +72,12 @@ class Settings(BaseSettings):
         else:
             return "TTTC0012U"
 
+    @property
+    def tr_id_buy_order(self) -> str:
+        if self.KIS_USE_MOCK:
+            return "VTTC0012U"
+        else:
+            return "TTTC0012U"
+
 
 settings = Settings()

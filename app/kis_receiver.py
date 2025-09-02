@@ -14,8 +14,10 @@ from app.kis_invesment import account_balance
 
 jango_df = None
 d2_cash = int(account_balance.get_balance())
+ordered = False
 async def start_kis_receiver():
     global jango_df
+    global ordered
     jango_df = jango_db(settings.col_names)
     print('jango_df_1', '\n', jango_df.shape)
     code_list = jango_df['종목코드'].unique().tolist()  # DB 에서 종목코드 가져옴
@@ -42,6 +44,7 @@ async def start_kis_receiver():
 
                         elif (tr_id in ['H0STCNI9', 'H0STCNI0']) and (data['체결여부'].values.tolist()[0] == '2'):  # 체결통보 데이터
                             trans_df = data.copy()
+                            ordered = False
                             if trans_df['매도매수구분'].values[0] == '02':  # 매수       # 01: 매도, 02: 매수
                                 print('매수 체결통보')
                                 jango_df = await kis.buy_update(ws=ws, jango_df=jango_df, trans_df=trans_df)
@@ -102,6 +105,7 @@ async def send_initial_data(websocket):
 async def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
     print('update_price() 실행')
     global jango_df
+    global ordered
     jango_df = pd.merge(jango_df, df, on='종목코드', how='left')
     print('jango_df_7', '\n', jango_df.shape)
     mask = jango_df["새현재가"].notna()
@@ -109,6 +113,23 @@ async def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
     jango_df = jango_df.drop(columns=['새현재가'])
     print('jango_df_8', '\n', jango_df.shape)
     sell_to_buy_order_map = kis.get_sell_to_buy_order_map()
+    buy_현재가 = jango_df['현재가'].astype('int')
+    buy_체결단가 = jango_df['체결단가'].astype('int')
+    buy_profit = (buy_현재가 - buy_체결단가) / buy_체결단가
+    print('buy_profit', '\n', buy_profit * 100)
+    buy_profit = buy_profit.iat[-1] * 100
+    print('마지막 매수건 수익률: ', buy_profit)
+
+    if buy_profit < -0.1 and not ordered:
+        print('매수조건 달성')
+        print('ordered=True: ', ordered)
+
+        매수할금액 = 500000
+        quantity = 매수할금액 // int(df['새현재가'][0])
+        buy_json_data = {'code': '233740', 'quantity': str(quantity)}
+        await kis.buy_order(buy_json_data)
+        ordered = True
+
 
     # 잔고테이블의 행이 1개 이상 있고, 딕셔너리가 비어 있을 때
     if (jango_df.shape[0] > 0) and not sell_to_buy_order_map:
@@ -145,7 +166,7 @@ async def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
         # if jango_df['매도_주문번호'].isna().all():
         # if not kis.__sell_to_buy_order_map:
 
-        if 수익률 > 3:
+        if 수익률 > 1:
             print('수익중..')
             # {"order_number": "2508280000001845", "stock_code": "233740", "stock_name": "KODEX 코스닥150레버리지", "quantity": "1"}}
             send_data = (jango_df[['매수_주문번호', '종목코드', '종목명', '체결수량']].

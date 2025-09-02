@@ -308,6 +308,39 @@ class kis_api:
             print("[매도 주문 오류]", e)
             return None
 
+
+    async def buy_order(self, json_data):
+        print('buy_order() 실행')
+        url = f"{settings.rest_url}/uapi/domestic-stock/v1/trading/order-cash"
+        code = json_data['code']
+        order_type = '01'
+        qty = json_data['quantity']
+        price = '0'
+        headers = {
+            "Content-Type": "application/json",
+            "authorization": f"Bearer {kis_auth.get_access_token()}",
+            "appkey": settings.KIS_APPKEY,
+            "appsecret": settings.KIS_APPSECRET,
+            "tr_id": settings.tr_id_buy_order,
+            "custtype": "P"
+        }
+
+        body = {
+            "CANO": settings.KIS_CANO,  # 계좌번호 앞 8자리
+            "ACNT_PRDT_CD": settings.KIS_ACNT_PRDT_CD,  # 계좌상품코드(뒤 2자리)
+            "PDNO": code,  # 종목코드
+            "ORD_DVSN": order_type,  # 00: 지정가, 03: 시장가
+            "ORD_QTY": qty,  # 수량
+            "ORD_UNPR": price,  # 주문단가 (시장가면 '0')
+        }
+
+        res_data = requests.post(url, headers=headers, data=json.dumps(body)).json()
+        print('res_data', res_data)
+
+
+
+
+
 kis = kis_api()
 
 if __name__ == '__main__':
