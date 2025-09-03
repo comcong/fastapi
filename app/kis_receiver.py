@@ -21,10 +21,6 @@ async def start_kis_receiver():
     jango_df = jango_db(settings.col_names)
     print('jango_df_1', '\n', jango_df.shape)
     code_list = jango_df['종목코드'].unique().tolist()  # DB 에서 종목코드 가져옴
-    if jango_df.shape[0] == 0:
-        buy_json_data = {'code': '233740', 'quantity': str(50)}
-        await kis.buy_order(buy_json_data)
-        ordered = True
 
     while True:
         try:
@@ -33,6 +29,10 @@ async def start_kis_receiver():
                 await kis.subscribe(ws=ws, tr_id='H0STCNT0', code_list=code_list)
 
                 while True:
+                    if jango_df.shape[0] == 0:
+                        buy_json_data = {'code': '233740', 'quantity': str(50)}
+                        await kis.buy_order(buy_json_data)
+                        ordered = True
                     raw_data = await ws.recv()
                     data = await kis.make_data(raw_data)  # 데이터 가공
 
