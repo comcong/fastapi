@@ -21,6 +21,10 @@ async def start_kis_receiver():
     jango_df = jango_db(settings.col_names)
     print('jango_df_1', '\n', jango_df.shape)
     code_list = jango_df['종목코드'].unique().tolist()  # DB 에서 종목코드 가져옴
+    if jango_df.shape[0] == 0:
+        buy_json_data = {'code': '233740', 'quantity': str(50)}
+        await kis.buy_order(buy_json_data)
+        ordered = True
 
     while True:
         try:
@@ -120,7 +124,7 @@ async def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
     buy_profit = buy_profit.iat[-1] * 100
     print('마지막 매수건 수익률: ', buy_profit)
 
-    if buy_profit < -0.1 and not ordered:
+    if buy_profit < -1   and not ordered:
         print('매수조건 달성')
         print('ordered=True: ', ordered)
 
@@ -165,6 +169,8 @@ async def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
         # print("jango_df['매도_주문번호']", jango_df['매도_주문번호'].isna().all())
         # if jango_df['매도_주문번호'].isna().all():
         # if not kis.__sell_to_buy_order_map:
+
+
 
         if 수익률 > 1:
             print('수익중..')
