@@ -124,7 +124,7 @@ async def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
     buy_profit = buy_profit.iat[-1] * 100
     print('마지막 매수건 수익률: ', buy_profit)
 
-    if buy_profit < -1   and not ordered:
+    if buy_profit < -0.5   and not ordered:
         print('매수조건 달성')
         print('ordered=True: ', ordered)
 
@@ -172,7 +172,7 @@ async def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
 
 
 
-        if 수익률 > 1:
+        if 수익률 > 0.5:
             print('수익중..')
             # {"order_number": "2508280000001845", "stock_code": "233740", "stock_name": "KODEX 코스닥150레버리지", "quantity": "1"}}
             send_data = (jango_df[['매수_주문번호', '종목코드', '종목명', '체결수량']].
