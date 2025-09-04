@@ -5,6 +5,7 @@ import pandas as pd
 import websockets
 import math
 from datetime import datetime
+import traceback
 
 import websocket_manager
 from app.core.config import settings
@@ -38,19 +39,16 @@ async def start_kis_receiver():
                         print(data.columns)
                         tr_id = data.iloc[0]['tr_id']
                         if tr_id == 'H0STCNT0':            # 실시간 현재가가 들어오는 경우
-                            print('tr_id == "H0STCNT0":')
+                            print('실시간 현재가 수신')
                             jango_df = await update_price(data[['종목코드', '새현재가']].copy())
                             print('jango_df_2', '\n', jango_df.shape)
                             await send_update_balance()
 
                         elif (tr_id in ['H0STCNI9', 'H0STCNI0']) and (data['체결여부'].values.tolist()[0] == '2'):  # 체결통보 데이터
+                            print('실시간 체결통보 수신')
                             trans_df = data.copy()
-                            last = jango_df.iloc[-1]  # 마지막 행 가져오기
-                            if all([
-                                last['주문수량'] == last['체결수량'],
-                                pd.isna(last['체결잔량'])
-                            ]):
-                                ordered = False
+                            ordered = False
+
                             if trans_df['매도매수구분'].values[0] == '02':  # 매수       # 01: 매도, 02: 매수
                                 print('매수 체결통보')
                                 jango_df = await kis.buy_update(ws=ws, jango_df=jango_df, trans_df=trans_df)
@@ -61,6 +59,7 @@ async def start_kis_receiver():
                                 print('체결수량:  ', trans_df.at[0, '체결수량'])
                                 jango_df = await kis.sell_update(ws=ws, jango_df=jango_df, trans_df=trans_df)
                                 print('jango_df_4', '\n', jango_df.shape)
+
                             data['새현재가'] = data['체결단가']
                             jango_df = await update_price(data[['종목코드', '새현재가']].copy())
                             # asyncio.create_task(send_update_balance(tr_id))  # 백그라운드로 send_update_balance() 실행
@@ -92,6 +91,7 @@ async def start_kis_receiver():
         except Exception as e:
             print("start_kis_receiver 예외:", e)
             print("예외 시점 jango_df.shape:", jango_df.shape)
+            traceback.print_exc()
         await asyncio.sleep(5)  # 재연결 대기
         print('5초간 대기')
 
@@ -138,14 +138,17 @@ async def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
 
     print('ordered: ', ordered)
     ###############  매수 조건 ###########################################
-    if all([
-        not ordered,
-        any([profit_rate < -0.5, jango_df.shape[0] == 0])
-    ]):
-        print('매수조건 달성')
-        print('ordered=True: ', ordered)
+    # 매수 조건 판단
+    buy_cond = (not ordered) and (
+            jango_df.empty
+            or (profit_rate < -0.5 and jango_df.iloc[-1]['주문수량'] == jango_df.iloc[-1]['체결수량'])
+    )
 
-        매수할금액 = 500000
+    if buy_cond:
+        print('매수조건 달성')
+        print('ordered: ', ordered)
+
+        매수할금액 = 500_000
         quantity = 매수할금액 // int(df['새현재가'][0])
         buy_json_data = {'code': '233740', 'quantity': str(quantity)}
         await kis.buy_order(buy_json_data)
@@ -153,8 +156,13 @@ async def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
 
     ###############  매도 조건 ###########################################
     # 잔고테이블의 행이 1개 이상 있고, 딕셔너리가 비어 있을 때
-    if all([jango_df.shape[0] > 0, not sell_to_buy_order_map, profit_rate > 0.5]):
-        print('수익중..')
+    if all([
+        not sell_to_buy_order_map,
+        profit_rate > 0.5,
+        pd.isna(jango_df.iloc[-1]['체결잔량'])
+    ]):
+        print('매도조건 달성')
+        print('ordered: ', ordered)
         print('kis.__sell_to_buy_order_map', sell_to_buy_order_map)
         # {"order_number": "2508280000001845", "stock_code": "233740", "stock_name": "KODEX 코스닥150레버리지", "quantity": "1"}}
         # send_data = (jango_df[['매수_주문번호', '종목코드', '종목명', '체결수량']].
@@ -219,34 +227,34 @@ async def update_balance(tr_id=''):
     if mask.any():  # 현재가가 없는 행이 하나라도 있으면 패스
         return None  # None 을 반환하고 종료
     else:           # 현재가가 모든 행에 전부 있으면
-        try:
-            수량 = jango_df['체결잔량'].fillna(jango_df['체결수량']).astype(int)
-            매입금액 = int((수량 * jango_df['체결단가'].astype(int)).sum())
-            # 매입금액 = int((jango_df['체결수량'].astype('int') * jango_df['체결단가'].astype('int')).sum())
-            매입수수료 = int(매입금액 * fee_rate)
-            # 평가금액 = int((jango_df['체결수량'].astype('int') * jango_df['현재가'].astype('int')).sum())
-            평가금액 = int((수량 * jango_df['현재가'].astype(int)).sum())
-            매도수수료 = int(평가금액 * fee_rate)
-            세금 = int(평가금액 * tax_rate)
-            평가금액 = 평가금액 - 매입수수료 - 매도수수료 - 세금
-            balance = d2_cash + 매입금액
-            print('balance: ', balance)
-            tot_acc_value = d2_cash + 평가금액
-            acc_profit = tot_acc_value - balance
-            print('balance: ', balance)
+        # try:
+        수량 = jango_df['체결잔량'].fillna(jango_df['체결수량']).astype(int)
+        매입금액 = int((수량 * jango_df['체결단가'].astype(int)).sum())
+        # 매입금액 = int((jango_df['체결수량'].astype('int') * jango_df['체결단가'].astype('int')).sum())
+        매입수수료 = int(매입금액 * fee_rate)
+        # 평가금액 = int((jango_df['체결수량'].astype('int') * jango_df['현재가'].astype('int')).sum())
+        평가금액 = int((수량 * jango_df['현재가'].astype(int)).sum())
+        매도수수료 = int(평가금액 * fee_rate)
+        세금 = int(평가금액 * tax_rate)
+        평가금액 = 평가금액 - 매입수수료 - 매도수수료 - 세금
+        balance = d2_cash + 매입금액
+        print('balance: ', balance)
+        tot_acc_value = d2_cash + 평가금액
+        acc_profit = tot_acc_value - balance
+        print('balance: ', balance)
 
 
-            if tr_id in ['H0STCNI9', 'H0STCNI0']:
-                jango_data = {
-                    '시간': time_str,
-                    '잔고': balance
-                }
-                print('jango_data: ', jango_data)
-                kis_db.insert_data(jango_data)
+        if tr_id in ['H0STCNI9', 'H0STCNI0']:
+            jango_data = {
+                '시간': time_str,
+                '잔고': balance
+            }
+            print('jango_data: ', jango_data)
+            kis_db.insert_data(jango_data)
 
-            return balance, tot_acc_value, acc_profit, d2_cash
+        return balance, tot_acc_value, acc_profit, d2_cash
 
 
 
-        except Exception as e:
-            print('update_balance() 에러:  ', e)
+        # except Exception as e:
+        #     print('update_balance() 에러:  ', e)
