@@ -20,7 +20,8 @@ async def start_kis_receiver():
     global ordered
     jango_df = jango_db(settings.col_names)
     print('jango_df_1', '\n', jango_df.shape)
-    code_list = jango_df['종목코드'].unique().tolist()  # DB 에서 종목코드 가져옴
+    # code_list = jango_df['종목코드'].unique().tolist()  # DB 에서 종목코드 가져옴
+    code_list = ['233740']
 
     while True:
         try:
@@ -29,10 +30,6 @@ async def start_kis_receiver():
                 await kis.subscribe(ws=ws, tr_id='H0STCNT0', code_list=code_list)
 
                 while True:
-                    if jango_df.shape[0] == 0:
-                        buy_json_data = {'code': '233740', 'quantity': str(50)}
-                        await kis.buy_order(buy_json_data)
-                        ordered = True
                     raw_data = await ws.recv()
                     data = await kis.make_data(raw_data)  # 데이터 가공
 
@@ -48,7 +45,12 @@ async def start_kis_receiver():
 
                         elif (tr_id in ['H0STCNI9', 'H0STCNI0']) and (data['체결여부'].values.tolist()[0] == '2'):  # 체결통보 데이터
                             trans_df = data.copy()
-                            ordered = False
+                            last = jango_df.iloc[-1]  # 마지막 행 가져오기
+                            if all([
+                                last['주문수량'] == last['체결수량'],
+                                pd.isna(last['체결잔량'])
+                            ]):
+                                ordered = False
                             if trans_df['매도매수구분'].values[0] == '02':  # 매수       # 01: 매도, 02: 매수
                                 print('매수 체결통보')
                                 jango_df = await kis.buy_update(ws=ws, jango_df=jango_df, trans_df=trans_df)
@@ -117,14 +119,29 @@ async def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
     jango_df = jango_df.drop(columns=['새현재가'])
     print('jango_df_8', '\n', jango_df.shape)
     sell_to_buy_order_map = kis.get_sell_to_buy_order_map()
-    buy_현재가 = jango_df['현재가'].astype('int')
-    buy_체결단가 = jango_df['체결단가'].astype('int')
-    buy_profit = (buy_현재가 - buy_체결단가) / buy_체결단가
-    print('buy_profit', '\n', buy_profit * 100)
-    buy_profit = buy_profit.iat[-1] * 100
-    print('마지막 매수건 수익률: ', buy_profit)
 
-    if buy_profit < -0.5   and not ordered:
+
+    #####  수익률 계산 ###############################
+    if jango_df.shape[0] > 0:
+        fee = 0.00015
+        tax = 0.0015
+        현재가 = int(jango_df['현재가'].iat[-1])
+        체결단가 = int(jango_df['체결단가'].iat[-1])
+        buy_cost = 체결단가 * (1 + fee)
+        sell_income = 현재가 * (1 - (fee + tax))
+
+        profit_rate = (sell_income - buy_cost) / buy_cost * 100
+        print(f"수익률: {profit_rate:.2f}%")
+
+    else:
+        profit_rate = 0
+
+    print('ordered: ', ordered)
+    ###############  매수 조건 ###########################################
+    if all([
+        not ordered,
+        any([profit_rate < -0.5, jango_df.shape[0] == 0])
+    ]):
         print('매수조건 달성')
         print('ordered=True: ', ordered)
 
@@ -134,75 +151,45 @@ async def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
         await kis.buy_order(buy_json_data)
         ordered = True
 
-
+    ###############  매도 조건 ###########################################
     # 잔고테이블의 행이 1개 이상 있고, 딕셔너리가 비어 있을 때
-    if (jango_df.shape[0] > 0) and not sell_to_buy_order_map:
+    if all([jango_df.shape[0] > 0, not sell_to_buy_order_map, profit_rate > 0.5]):
+        print('수익중..')
         print('kis.__sell_to_buy_order_map', sell_to_buy_order_map)
-        # 수익률 계산
-        fee_rate = 0.00015
-        tax_rate = 0.0015
+        # {"order_number": "2508280000001845", "stock_code": "233740", "stock_name": "KODEX 코스닥150레버리지", "quantity": "1"}}
+        # send_data = (jango_df[['매수_주문번호', '종목코드', '종목명', '체결수량']].
+        send_data = (
+            jango_df[['매수_주문번호', '종목코드', '종목명', '체결수량']]
+            .iloc[-1]  # Series 반환
+            .rename({
+                '매수_주문번호': 'order_number',
+                '종목코드': 'stock_code',
+                '종목명': 'stock_name',
+                '체결수량': 'quantity'
+            })
+            .to_dict()
+        )
+        print('send_data', send_data)
 
-        수량 = jango_df['체결수량'].astype('int')
-        매수가 = jango_df['체결단가'].astype('int')
-        현재가 = jango_df['현재가'].astype('int')
+        # for json_data in send_data:
+        # asyncio.create_task(kis.sell_order(json_data))
+        res = await kis.sell_order(send_data)
+        print('res', res)
+        if 'output1' in res:
+            sell_order_no, sell_order_price, sell_order_qty = res['output1']
+            print("매도 주문 응답 정상", sell_order_no, sell_order_price, sell_order_qty)
+            jango_df.loc[jango_df['매수_주문번호'] == send_data['order_number'], ['매도_주문번호', '매도_주문가격', '매도_주문수량']] = (sell_order_no, sell_order_price, sell_order_qty)
+            json_data_html = jango_df.drop(columns='체결량').to_dict(orient="records")
+            data = {"type": "stock_data", "data": json_data_html}
+            await websocket_manager.manager.broadcast(json.dumps(data))
 
-        print('수량: ', 수량.sum())
-        print('매입단가: ', round(((매수가 * 수량).sum()) / 수량.sum(), 2))
-
-        매입금액 = (매수가 * 수량).sum()
-        print('매입금액: ', 매입금액)
-        평가금액 = (현재가 * 수량).sum()
-        print('평가금액: ', 평가금액)
-        세전_수익금 = 평가금액 - 매입금액
-        print('세전_수익금: ', 세전_수익금)
-
-        매수_수수료 = 매입금액 * fee_rate
-        매도_수수료 = 평가금액 * fee_rate
-        세금 = 평가금액 * tax_rate
-        세후_수익금 = 세전_수익금 - 매수_수수료 - 매도_수수료 - 세금
-        print('세후_수익금: ', 세후_수익금)
-
-        수익률 = 세후_수익금 / 매입금액
-        수익률 = round(수익률 * 100, 2)
-        print('수익률: ', '\n', 수익률, '\n')
-
-        # print("jango_df['매도_주문번호']", jango_df['매도_주문번호'].isna().all())
-        # if jango_df['매도_주문번호'].isna().all():
-        # if not kis.__sell_to_buy_order_map:
-
+        print("json.dumps(res['output2'])", json.dumps(res['output2']))
+        await websocket_manager.manager.broadcast(json.dumps(res['output2']))
+        await asyncio.sleep(0.5)
 
 
-        if 수익률 > 0.5:
-            print('수익중..')
-            # {"order_number": "2508280000001845", "stock_code": "233740", "stock_name": "KODEX 코스닥150레버리지", "quantity": "1"}}
-            send_data = (jango_df[['매수_주문번호', '종목코드', '종목명', '체결수량']].
-                         rename(columns={
-                                '매수_주문번호': 'order_number',
-                                '종목코드': 'stock_code',
-                                '종목명': 'stock_name',
-                                '체결수량': 'quantity'
-                        }).to_dict(orient="records"))
-            print('send_data', send_data)
-
-            for json_data in send_data:
-                # asyncio.create_task(kis.sell_order(json_data))
-                res = await kis.sell_order(json_data)
-                print('res', res)
-                if 'output1' in res:
-                    sell_order_no, sell_order_price, sell_order_qty = res['output1']
-                    print("매도 주문 응답 정상", sell_order_no, sell_order_price, sell_order_qty)
-                    jango_df.loc[jango_df['매수_주문번호'] == json_data['order_number'], ['매도_주문번호', '매도_주문가격', '매도_주문수량']] = (sell_order_no, sell_order_price, sell_order_qty)
-                    json_data_html = jango_df.drop(columns='체결량').to_dict(orient="records")
-                    data = {"type": "stock_data", "data": json_data_html}
-                    await websocket_manager.manager.broadcast(json.dumps(data))
-
-                print("json.dumps(res['output2'])", json.dumps(res['output2']))
-                await websocket_manager.manager.broadcast(json.dumps(res['output2']))
-                await asyncio.sleep(0.5)
-
-
-        else:
-            print('손실중...')
+    else:
+        print('손실중...')
 
 
     print('update_price() 종료')
