@@ -159,7 +159,7 @@ async def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
     if all([
         not sell_to_buy_order_map,
         profit_rate > 0.5,
-        pd.isna(jango_df.iloc[-1]['체결잔량'])
+        jango_df['체결잔량'].isna().all()
     ]):
         print('매도조건 달성')
         print('ordered: ', ordered)
