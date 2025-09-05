@@ -31,6 +31,7 @@ supa_db = get_data()
 
 jango_df = pd.DataFrame(supa_db).sort_values('시간')
 jango_df['시간'] = pd.to_datetime(jango_df['시간'])
+# jango_df['시간'] = jango_df['시간'].astype('int')
 jango_df['잔고'] = jango_df['잔고'].astype('int')
 
 jango_df.plot(x="시간", y="잔고", kind="line", title="잔고 추이")
