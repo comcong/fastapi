@@ -6,12 +6,14 @@ import websockets
 import math
 from datetime import datetime
 import traceback
+import requests
 
 import websocket_manager
 from app.core.config import settings
 from app.db import kis_db
 from app.kis_invesment.kis_manager import kis
 from app.kis_invesment import account_balance
+from app.services import kis_auth
 
 jango_df = None
 d2_cash = int(account_balance.get_balance())
@@ -120,7 +122,7 @@ async def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
     jango_df.loc[mask, "현재가"] = jango_df.loc[mask, "새현재가"]
     jango_df = jango_df.drop(columns=['새현재가'])
     print('jango_df_8', '\n', jango_df.shape)
-    sell_to_buy_order_map = kis.get_sell_to_buy_order_map()
+    # sell_to_buy_order_map = kis.get_sell_to_buy_order_map()
 
 
     #####  수익률 계산 ###############################
@@ -153,19 +155,19 @@ async def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
         매수할금액 = 500_000
         quantity = 매수할금액 // int(df['새현재가'][0])
         buy_json_data = {'code': '233740', 'quantity': str(quantity)}
-        await kis.buy_order(buy_json_data)
-        ordered = True
+        await buy_order(buy_json_data)
+        # ordered = True
 
     ###############  매도 조건 ###########################################
     # 잔고테이블의 행이 1개 이상 있고, 딕셔너리가 비어 있을 때
     if all([
-        not sell_to_buy_order_map,
+        not kis.sell_to_buy_order_map,
         profit_rate > 0.5,
         jango_df['체결잔량'].isna().all()
     ]):
         print('매도조건_달성')
         print('ordered: ', ordered)
-        print('kis.__sell_to_buy_order_map', sell_to_buy_order_map)
+        print('kis.__sell_to_buy_order_map', kis.sell_to_buy_order_map)
         # {"order_number": "2508280000001845", "stock_code": "233740", "stock_name": "KODEX 코스닥150레버리지", "quantity": "1"}}
         # send_data = (jango_df[['매수_주문번호', '종목코드', '종목명', '체결수량']].
         send_data = (
@@ -183,7 +185,7 @@ async def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
 
         # for json_data in send_data:
         # asyncio.create_task(kis.sell_order(json_data))
-        res = await kis.sell_order(send_data)
+        res = await sell_order(send_data)
         print('res', res)
         if 'output1' in res:
             sell_order_no, sell_order_price, sell_order_qty = res['output1']
@@ -256,6 +258,110 @@ async def update_balance(tr_id='', order_type=''):
             kis_db.insert_data(jango_data)
 
         return balance, tot_acc_value, acc_profit, d2_cash
+
+
+async def sell_order(json_data):
+    print('sell_stock 실행')
+    global ordered
+    try:
+        # {"order_number":"3444","stock_code":"233740","stock_name":"KODEX 코스닥150레버리지","quantity":"1","current_price":"9065"}
+        buy_order_no = json_data.get("order_number")
+        url = f"{settings.rest_url}/uapi/domestic-stock/v1/trading/order-cash"
+        code = json_data['stock_code']
+        order_type = '01'
+        qty = json_data['quantity']
+        # price = json_data['current_price']
+        price = '0'
+
+        headers = {
+            "Content-Type": "application/json",
+            "authorization": f"Bearer {kis_auth.get_access_token()}",
+            "appkey": settings.KIS_APPKEY,
+            "appsecret": settings.KIS_APPSECRET,
+            "tr_id": settings.tr_id_sell_order,
+            "custtype": "P"
+        }
+
+        body = {
+            "CANO": settings.KIS_CANO,  # 계좌번호 앞 8자리
+            "ACNT_PRDT_CD": settings.KIS_ACNT_PRDT_CD,  # 계좌상품코드(뒤 2자리)
+            "PDNO": code,  # 종목코드
+            "ORD_DVSN": order_type,  # 00: 지정가, 03: 시장가
+            "ORD_QTY": qty,  # 수량
+            "ORD_UNPR": price,  # 주문단가 (시장가면 '0')
+        }
+
+        res_data = requests.post(url, headers=headers, data=json.dumps(body)).json()
+        print('res_data', res_data)
+
+        if res_data.get("rt_cd") == "0":
+            print(f"[매도 주문 성공] {code} {qty}주 @ {price}원")
+            ordered = True
+            output = res_data.get("output")
+            sell_order_no = output.get("ODNO")  # 매도 주문번호 받아오기
+            kis.sell_to_buy_order_map[sell_order_no] = buy_order_no  # {매도주문번호 : 매수주문번호} 맵핑
+            output1 = [sell_order_no, price, qty]
+            output2 = {
+                "type": "sell_result",
+                "data": {
+                    "order_number": json_data["order_number"],
+                    "success": True,
+                    "message": "매도 주문이 정상적으로 체결되었습니다."
+                }
+            }
+            return {'output1': output1, 'output2': output2}
+
+        else:
+            print(f"[매도 주문 실패] {res_data}")
+            output2 = {
+                "type": "sell_result",
+                "data": {
+                    "order_number": json_data["order_number"],
+                    "success": False,
+                    "message": "매도 주문에 실패했습니다. 잔고를 확인하세요."
+                }
+            }
+            return {'output2': output2}
+
+
+
+    except Exception as e:
+        print("[매도 주문 오류]", e)
+        return None
+
+async def buy_order(json_data):
+    print('buy_order() 실행')
+    global ordered
+    url = f"{settings.rest_url}/uapi/domestic-stock/v1/trading/order-cash"
+    code = json_data['code']
+    order_type = '01'
+    qty = json_data['quantity']
+    price = '0'
+    headers = {
+        "Content-Type": "application/json",
+        "authorization": f"Bearer {kis_auth.get_access_token()}",
+        "appkey": settings.KIS_APPKEY,
+        "appsecret": settings.KIS_APPSECRET,
+        "tr_id": settings.tr_id_buy_order,
+        "custtype": "P"
+    }
+
+    body = {
+        "CANO": settings.KIS_CANO,  # 계좌번호 앞 8자리
+        "ACNT_PRDT_CD": settings.KIS_ACNT_PRDT_CD,  # 계좌상품코드(뒤 2자리)
+        "PDNO": code,  # 종목코드
+        "ORD_DVSN": order_type,  # 00: 지정가, 03: 시장가
+        "ORD_QTY": qty,  # 수량
+        "ORD_UNPR": price,  # 주문단가 (시장가면 '0')
+    }
+
+    res_data = requests.post(url, headers=headers, data=json.dumps(body)).json()
+    if res_data.get("rt_cd") == "0":
+        ordered = True
+    print('res_data', res_data)
+
+
+
 
 
 

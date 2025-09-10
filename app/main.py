@@ -84,7 +84,7 @@ async def websocket_endpoint(websocket: WebSocket):
             print('fws_data')
             print(fws_data)
             json_data = json.loads(fws_data)
-            res = await kis.sell_order(json_data['data'])
+            res = await kis_receiver.sell_order(json_data['data'])
             print('res', res)
             if 'output1' in res:
                 sell_order_no, sell_order_price, sell_order_qty = res['output1']
