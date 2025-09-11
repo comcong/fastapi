@@ -3,7 +3,6 @@ import asyncio
 import json
 import pandas as pd
 import websockets
-import math
 from datetime import datetime
 import traceback
 import requests
@@ -18,6 +17,8 @@ from app.services import kis_auth
 jango_df = None
 d2_cash = int(account_balance.get_balance())
 ordered = False
+sell_to_buy_order_map = {}
+yymmdd = datetime.now().strftime("%y%m%d")
 async def start_kis_receiver():
     global jango_df
     global ordered
@@ -122,7 +123,6 @@ async def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
     jango_df.loc[mask, "현재가"] = jango_df.loc[mask, "새현재가"]
     jango_df = jango_df.drop(columns=['새현재가'])
     print('jango_df_8', '\n', jango_df.shape)
-    # sell_to_buy_order_map = kis.get_sell_to_buy_order_map()
 
 
     #####  수익률 계산 ###############################
@@ -161,13 +161,13 @@ async def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
     ###############  매도 조건 ###########################################
     # 잔고테이블의 행이 1개 이상 있고, 딕셔너리가 비어 있을 때
     if all([
-        not kis.sell_to_buy_order_map,
+        not sell_to_buy_order_map,
         profit_rate > 0.5,
         jango_df['체결잔량'].isna().all()
     ]):
         print('매도조건_달성')
         print('ordered: ', ordered)
-        print('kis.__sell_to_buy_order_map', kis.sell_to_buy_order_map)
+        print('sell_to_buy_order_map', sell_to_buy_order_map)
         # {"order_number": "2508280000001845", "stock_code": "233740", "stock_name": "KODEX 코스닥150레버리지", "quantity": "1"}}
         # send_data = (jango_df[['매수_주문번호', '종목코드', '종목명', '체결수량']].
         send_data = (
@@ -263,6 +263,7 @@ async def update_balance(tr_id='', order_type=''):
 async def sell_order(json_data):
     print('sell_stock 실행')
     global ordered
+    global sell_to_buy_order_map
     try:
         # {"order_number":"3444","stock_code":"233740","stock_name":"KODEX 코스닥150레버리지","quantity":"1","current_price":"9065"}
         buy_order_no = json_data.get("order_number")
@@ -299,7 +300,7 @@ async def sell_order(json_data):
             ordered = True
             output = res_data.get("output")
             sell_order_no = output.get("ODNO")  # 매도 주문번호 받아오기
-            kis.sell_to_buy_order_map[sell_order_no] = buy_order_no  # {매도주문번호 : 매수주문번호} 맵핑
+            sell_to_buy_order_map[sell_order_no] = buy_order_no  # {매도주문번호 : 매수주문번호} 맵핑
             output1 = [sell_order_no, price, qty]
             output2 = {
                 "type": "sell_result",
@@ -361,7 +362,109 @@ async def buy_order(json_data):
     print('res_data', res_data)
 
 
+async def buy_update(ws, jango_df, trans_df):
+    print('buy_update() 실행')
+    ord_num = yymmdd + trans_df['주문번호'].values[0]
 
+    # 주문번호가 이미 존재하는지 확인
+    if ord_num in jango_df['매수_주문번호'].values:
+        print('주문번호가 있는 경우')
+        idx = jango_df[jango_df['매수_주문번호'] == ord_num].index[0] # 기존 주문번호가 있는 행번호 가져오기
+
+        # 수량 누적 (int로 변환 주의)
+        기존_수량 = int(jango_df.at[idx, '체결수량'])
+        print('기존수량: ', 기존_수량)
+        신규_수량 = int(trans_df['체결수량'].values[0])
+        print('신규_수량: ', 신규_수량)
+        jango_df.at[idx, '체결수량'] = str(기존_수량 + 신규_수량)
+
+        # 체결단가는 최신값으로 갱신
+        기존_체결단가 = int(jango_df.at[idx, '체결단가'])
+        print('기존_체결단가: ', 기존_체결단가)
+        신규_체결단가 = int(trans_df['체결단가'].values[0])
+        print('신규_체결단가: ', 신규_체결단가)
+        평균_체결단가 = (기존_수량 * 기존_체결단가 + 신규_수량 * 신규_체결단가) / (기존_수량 + 신규_수량)
+        평균_체결단가 = round(평균_체결단가)
+        print('평균_체결단가')
+        print(평균_체결단가)
+
+        jango_df.at[idx, '체결단가'] = 평균_체결단가
+        체결시간 = yymmdd + trans_df['체결시간'].values[0]
+        jango_df.at[idx, '체결시간'] = 체결시간
+        print('buy_update() 기존 주문이 있는 경우 실행 완료')
+        return jango_df
+
+    else:  # 새로운 주문번호라면, 새로운 행에 추가
+        print('주문번호가 없는 경우')
+        체결시간 = yymmdd + trans_df['체결시간'].values[0]
+        trans_df['체결시간'] = 체결시간
+
+        tr_id = 'H0STCNT0'
+        tran_code = trans_df['종목코드'].values[0]
+        code_list = jango_df['종목코드'].unique().tolist()
+        print('tran_code', tran_code)
+        print('code_list', code_list)
+        if tran_code not in code_list:  # 새로운 종목 구독 추가
+            print('새로운 종목코드 구독 추가')
+            await kis.subscribe(ws=ws, tr_type='1', tr_id=tr_id, code_list=[tran_code])
+        jango_df = pd.concat([jango_df, trans_df], ignore_index=True)
+        jango_df = jango_df[settings.col_names].where(pd.notna(jango_df), None)  # nan 을 None 으로 변환
+
+        print('buy_update() 주문이 없는 경우 실행 완료')
+        return jango_df
+
+
+async def sell_update(ws, jango_df, trans_df):
+    print('sell_update() 실행')
+    global sell_to_buy_order_map
+    print(trans_df)
+    sell_ord_num = trans_df['주문번호'].values[0]
+    print('sell_to_buy_order_map', sell_to_buy_order_map)
+    print(len(sell_to_buy_order_map), ': 개')
+
+    print('sell_ord_num', sell_ord_num)
+
+    if sell_ord_num in sell_to_buy_order_map:
+        buy_ord_num = sell_to_buy_order_map[sell_ord_num]
+        if buy_ord_num in jango_df['매수_주문번호'].values:  # 주문번호가 존재하는지 확인
+            idx = jango_df[jango_df['매수_주문번호'] == buy_ord_num].index[0] # 기존 주문번호가 있는 행번호 가져오기
+            주문수량 = int(jango_df.at[idx, '매도_주문수량'])  # 에러발생
+            # start_kis_receiver 예외: int() argument must be a string, a bytes - like object or a real number, not 'NoneType'
+
+            print('주문수량', 주문수량)
+            체결수량 = int(trans_df['체결수량'][0])
+            print('체결수량', 체결수량)
+
+            if jango_df.at[idx, '체결량'] in ['', None]:
+                누적체결량 = 0
+            else:
+                누적체결량 = int(jango_df.at[idx, '체결량'])
+            누적체결량 += 체결수량
+            잔량 = 주문수량 - 누적체결량
+            print('잔량', 잔량)
+            jango_df.at[idx, '체결잔량'] = str(잔량)
+            jango_df.at[idx, '체결량'] = str(누적체결량)
+
+            if 누적체결량 == 주문수량:  # 전부 체결되면 행 제거
+                print('전부체결')
+                jango_df.drop(index=idx, inplace=True)
+                del sell_to_buy_order_map[sell_ord_num]  # 매도 완료된 오더주문번호 삭제
+                tran_code = trans_df['종목코드'].values[0]
+                code_list = jango_df['종목코드'].unique().tolist()
+                tr_id = 'H0STCNT0'
+                print('tran_code', tran_code)
+                print('code_list', code_list)
+                if tran_code not in code_list:  # 없는 종목코드 구독 해제
+                    print('없는 종목코드 구독 해제')
+                    await kis.subscribe(ws=ws, tr_type='2', tr_id=tr_id, code_list=[tran_code])
+                return jango_df
+
+            else:
+                return jango_df
+
+    else:
+        print(f"매수 주문번호가 없는 매도주문번호 {sell_ord_num} 가 체결되었습니다. 체결 데이터 확인 필요!!")
+        return jango_df
 
 
 

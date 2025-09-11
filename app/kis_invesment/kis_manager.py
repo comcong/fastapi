@@ -80,108 +80,108 @@ class kis_api:
             else:
                 return data   # PINGPONG 데이터 그대로 리턴
 
-    async def buy_update(self, ws, jango_df, trans_df):
-        print('buy_update() 실행')
-        ord_num = self.__yymmdd + trans_df['주문번호'].values[0]
-
-        # 주문번호가 이미 존재하는지 확인
-        if ord_num in jango_df['매수_주문번호'].values:
-            print('주문번호가 있는 경우')
-            idx = jango_df[jango_df['매수_주문번호'] == ord_num].index[0] # 기존 주문번호가 있는 행번호 가져오기
-
-            # 수량 누적 (int로 변환 주의)
-            기존_수량 = int(jango_df.at[idx, '체결수량'])
-            print('기존수량: ', 기존_수량)
-            신규_수량 = int(trans_df['체결수량'].values[0])
-            print('신규_수량: ', 신규_수량)
-            jango_df.at[idx, '체결수량'] = str(기존_수량 + 신규_수량)
-
-            # 체결단가는 최신값으로 갱신
-            기존_체결단가 = int(jango_df.at[idx, '체결단가'])
-            print('기존_체결단가: ', 기존_체결단가)
-            신규_체결단가 = int(trans_df['체결단가'].values[0])
-            print('신규_체결단가: ', 신규_체결단가)
-            평균_체결단가 = (기존_수량 * 기존_체결단가 + 신규_수량 * 신규_체결단가) / (기존_수량 + 신규_수량)
-            평균_체결단가 = round(평균_체결단가)
-            print('평균_체결단가')
-            print(평균_체결단가)
-
-            jango_df.at[idx, '체결단가'] = 평균_체결단가
-            체결시간 = self.__yymmdd + trans_df['체결시간'].values[0]
-            jango_df.at[idx, '체결시간'] = 체결시간
-            print('buy_update() 기존 주문이 있는 경우 실행 완료')
-            return jango_df
-
-        else:  # 새로운 주문번호라면, 새로운 행에 추가
-            print('주문번호가 없는 경우')
-            체결시간 = self.__yymmdd + trans_df['체결시간'].values[0]
-            trans_df['체결시간'] = 체결시간
-
-            tr_id = 'H0STCNT0'
-            tran_code = trans_df['종목코드'].values[0]
-            code_list = jango_df['종목코드'].unique().tolist()
-            print('tran_code', tran_code)
-            print('code_list', code_list)
-            if tran_code not in code_list:  # 새로운 종목 구독 추가
-                print('새로운 종목코드 구독 추가')
-                await self.subscribe(ws=ws, tr_type='1', tr_id=tr_id, code_list=[tran_code])
-            jango_df = pd.concat([jango_df, trans_df], ignore_index=True)
-            jango_df = jango_df[self.__col_names].where(pd.notna(jango_df), None)  # nan 을 None 으로 변환
-
-            print('buy_update() 주문이 없는 경우 실행 완료')
-            return jango_df
-
-
-    async def sell_update(self, ws, jango_df, trans_df):
-        print('sell_update() 실행')
-        print(trans_df)
-        sell_ord_num = trans_df['주문번호'].values[0]
-        print('self.__sell_to_buy_order_map', self.sell_to_buy_order_map)
-        print(len(self.sell_to_buy_order_map), ': 개')
-
-        print('sell_ord_num', sell_ord_num)
-
-        if sell_ord_num in self.sell_to_buy_order_map:
-            buy_ord_num = self.sell_to_buy_order_map[sell_ord_num]
-            if buy_ord_num in jango_df['매수_주문번호'].values:  # 주문번호가 존재하는지 확인
-                idx = jango_df[jango_df['매수_주문번호'] == buy_ord_num].index[0] # 기존 주문번호가 있는 행번호 가져오기
-                주문수량 = int(jango_df.at[idx, '매도_주문수량'])  # 에러발생
-                # start_kis_receiver 예외: int() argument must be a string, a bytes - like object or a real number, not 'NoneType'
-
-                print('주문수량', 주문수량)
-                체결수량 = int(trans_df['체결수량'][0])
-                print('체결수량', 체결수량)
-
-                if jango_df.at[idx, '체결량'] in ['', None]:
-                    누적체결량 = 0
-                else:
-                    누적체결량 = int(jango_df.at[idx, '체결량'])
-                누적체결량 += 체결수량
-                잔량 = 주문수량 - 누적체결량
-                print('잔량', 잔량)
-                jango_df.at[idx, '체결잔량'] = str(잔량)
-                jango_df.at[idx, '체결량'] = str(누적체결량)
-
-                if 누적체결량 == 주문수량:  # 전부 체결되면 행 제거
-                    print('전부체결')
-                    jango_df.drop(index=idx, inplace=True)
-                    del self.sell_to_buy_order_map[sell_ord_num]  # 매도 완료된 오더주문번호 삭제
-                    tran_code = trans_df['종목코드'].values[0]
-                    code_list = jango_df['종목코드'].unique().tolist()
-                    tr_id = 'H0STCNT0'
-                    print('tran_code', tran_code)
-                    print('code_list', code_list)
-                    if tran_code not in code_list:  # 없는 종목코드 구독 해제
-                        print('없는 종목코드 구독 해제')
-                        await self.subscribe(ws=ws, tr_type='2', tr_id=tr_id, code_list=[tran_code])
-                    return jango_df
-
-                else:
-                    return jango_df
-
-        else:
-            print(f"매수 주문번호가 없는 매도주문번호 {sell_ord_num} 가 체결되었습니다. 체결 데이터 확인 필요!!")
-            return jango_df
+    # async def buy_update(self, ws, jango_df, trans_df):
+    #     print('buy_update() 실행')
+    #     ord_num = self.__yymmdd + trans_df['주문번호'].values[0]
+    #
+    #     # 주문번호가 이미 존재하는지 확인
+    #     if ord_num in jango_df['매수_주문번호'].values:
+    #         print('주문번호가 있는 경우')
+    #         idx = jango_df[jango_df['매수_주문번호'] == ord_num].index[0] # 기존 주문번호가 있는 행번호 가져오기
+    #
+    #         # 수량 누적 (int로 변환 주의)
+    #         기존_수량 = int(jango_df.at[idx, '체결수량'])
+    #         print('기존수량: ', 기존_수량)
+    #         신규_수량 = int(trans_df['체결수량'].values[0])
+    #         print('신규_수량: ', 신규_수량)
+    #         jango_df.at[idx, '체결수량'] = str(기존_수량 + 신규_수량)
+    #
+    #         # 체결단가는 최신값으로 갱신
+    #         기존_체결단가 = int(jango_df.at[idx, '체결단가'])
+    #         print('기존_체결단가: ', 기존_체결단가)
+    #         신규_체결단가 = int(trans_df['체결단가'].values[0])
+    #         print('신규_체결단가: ', 신규_체결단가)
+    #         평균_체결단가 = (기존_수량 * 기존_체결단가 + 신규_수량 * 신규_체결단가) / (기존_수량 + 신규_수량)
+    #         평균_체결단가 = round(평균_체결단가)
+    #         print('평균_체결단가')
+    #         print(평균_체결단가)
+    #
+    #         jango_df.at[idx, '체결단가'] = 평균_체결단가
+    #         체결시간 = self.__yymmdd + trans_df['체결시간'].values[0]
+    #         jango_df.at[idx, '체결시간'] = 체결시간
+    #         print('buy_update() 기존 주문이 있는 경우 실행 완료')
+    #         return jango_df
+    #
+    #     else:  # 새로운 주문번호라면, 새로운 행에 추가
+    #         print('주문번호가 없는 경우')
+    #         체결시간 = self.__yymmdd + trans_df['체결시간'].values[0]
+    #         trans_df['체결시간'] = 체결시간
+    #
+    #         tr_id = 'H0STCNT0'
+    #         tran_code = trans_df['종목코드'].values[0]
+    #         code_list = jango_df['종목코드'].unique().tolist()
+    #         print('tran_code', tran_code)
+    #         print('code_list', code_list)
+    #         if tran_code not in code_list:  # 새로운 종목 구독 추가
+    #             print('새로운 종목코드 구독 추가')
+    #             await self.subscribe(ws=ws, tr_type='1', tr_id=tr_id, code_list=[tran_code])
+    #         jango_df = pd.concat([jango_df, trans_df], ignore_index=True)
+    #         jango_df = jango_df[self.__col_names].where(pd.notna(jango_df), None)  # nan 을 None 으로 변환
+    #
+    #         print('buy_update() 주문이 없는 경우 실행 완료')
+    #         return jango_df
+    #
+    #
+    # async def sell_update(self, ws, jango_df, trans_df):
+    #     print('sell_update() 실행')
+    #     print(trans_df)
+    #     sell_ord_num = trans_df['주문번호'].values[0]
+    #     print('self.__sell_to_buy_order_map', self.sell_to_buy_order_map)
+    #     print(len(self.sell_to_buy_order_map), ': 개')
+    #
+    #     print('sell_ord_num', sell_ord_num)
+    #
+    #     if sell_ord_num in self.sell_to_buy_order_map:
+    #         buy_ord_num = self.sell_to_buy_order_map[sell_ord_num]
+    #         if buy_ord_num in jango_df['매수_주문번호'].values:  # 주문번호가 존재하는지 확인
+    #             idx = jango_df[jango_df['매수_주문번호'] == buy_ord_num].index[0] # 기존 주문번호가 있는 행번호 가져오기
+    #             주문수량 = int(jango_df.at[idx, '매도_주문수량'])  # 에러발생
+    #             # start_kis_receiver 예외: int() argument must be a string, a bytes - like object or a real number, not 'NoneType'
+    #
+    #             print('주문수량', 주문수량)
+    #             체결수량 = int(trans_df['체결수량'][0])
+    #             print('체결수량', 체결수량)
+    #
+    #             if jango_df.at[idx, '체결량'] in ['', None]:
+    #                 누적체결량 = 0
+    #             else:
+    #                 누적체결량 = int(jango_df.at[idx, '체결량'])
+    #             누적체결량 += 체결수량
+    #             잔량 = 주문수량 - 누적체결량
+    #             print('잔량', 잔량)
+    #             jango_df.at[idx, '체결잔량'] = str(잔량)
+    #             jango_df.at[idx, '체결량'] = str(누적체결량)
+    #
+    #             if 누적체결량 == 주문수량:  # 전부 체결되면 행 제거
+    #                 print('전부체결')
+    #                 jango_df.drop(index=idx, inplace=True)
+    #                 del self.sell_to_buy_order_map[sell_ord_num]  # 매도 완료된 오더주문번호 삭제
+    #                 tran_code = trans_df['종목코드'].values[0]
+    #                 code_list = jango_df['종목코드'].unique().tolist()
+    #                 tr_id = 'H0STCNT0'
+    #                 print('tran_code', tran_code)
+    #                 print('code_list', code_list)
+    #                 if tran_code not in code_list:  # 없는 종목코드 구독 해제
+    #                     print('없는 종목코드 구독 해제')
+    #                     await self.subscribe(ws=ws, tr_type='2', tr_id=tr_id, code_list=[tran_code])
+    #                 return jango_df
+    #
+    #             else:
+    #                 return jango_df
+    #
+    #     else:
+    #         print(f"매수 주문번호가 없는 매도주문번호 {sell_ord_num} 가 체결되었습니다. 체결 데이터 확인 필요!!")
+    #         return jango_df
 
 
     # AES256 DECODE
