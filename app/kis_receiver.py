@@ -54,14 +54,14 @@ async def start_kis_receiver():
 
                             if trans_df['매도매수구분'].values[0] == '02':  # 매수       # 01: 매도, 02: 매수
                                 print('매수 체결통보')
-                                jango_df = await kis.buy_update(ws=ws, jango_df=jango_df, trans_df=trans_df)
+                                jango_df = await buy_update(ws=ws, jango_df=jango_df, trans_df=trans_df)
                                 print('jango_df_3', '\n', jango_df.shape)
                                 await send_update_balance(tr_id=tr_id, order_type='매수')
 
                             elif trans_df['매도매수구분'].values[0] == '01': # 매도      # 01: 매도, 02: 매수
                                 print('매도 체결통보')
                                 print('체결수량:  ', trans_df.at[0, '체결수량'])
-                                jango_df = await kis.sell_update(ws=ws, jango_df=jango_df, trans_df=trans_df)
+                                jango_df = await sell_update(ws=ws, jango_df=jango_df, trans_df=trans_df)
                                 print('jango_df_4', '\n', jango_df.shape)
                                 await send_update_balance(tr_id=tr_id, order_type='매도')
 
