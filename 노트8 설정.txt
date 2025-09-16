@@ -1,0 +1,7 @@
+ce0917191bb29e17017e    device
+
+u0_a210
+
+192.168.10.201
+
+ssh -i %USERPROFILE%\.ssh\note_8 -p 8022 u0_a210@124.62.128.148
