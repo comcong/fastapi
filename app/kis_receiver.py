@@ -14,7 +14,7 @@ from app.kis_invesment.kis_manager import kis
 from app.kis_invesment import account_balance
 from app.services import kis_auth
 
-jango_df = None
+jango_df = pd.DataFrame()
 d2_cash = int(account_balance.get_balance())
 ordered = False
 sell_to_buy_order_map = {}
@@ -224,7 +224,7 @@ async def update_balance(tr_id='', order_type=''):
     fee_rate = 0.00015
     tax_rate = 0.0015
     now = datetime.now()
-    time_str = now.strftime("%Y%m%d%H%M%S")
+    time_str = now.strftime("%Y년%m월%d일 %H시%M분%S초")
 
     if tr_id in ['H0STCNI9', 'H0STCNI0']:
         res = account_balance.get_balance()
@@ -252,7 +252,7 @@ async def update_balance(tr_id='', order_type=''):
         print('balance: ', balance)
 
 
-        if tr_id in ['H0STCNI9', 'H0STCNI0']:
+        if (tr_id in ['H0STCNI9', 'H0STCNI0']) and (jango_df.iloc[-1]["주문수량"] == jango_df.iloc[-1]["체결수량"]):
             jango_data = {
                 '시간': time_str,
                 '잔고': balance,
