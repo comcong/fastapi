@@ -96,8 +96,8 @@ async def start_kis_receiver():
         except ConnectionAbortedError as e:
             print("네트워크 연결 끊김:", e)
         except Exception as e:
-            print("start_kis_receiver 예외:", e)
-            print("예외 시점 jango_df.shape:", jango_df.shape)
+            # print("start_kis_receiver 예외:", e)
+            # print("예외 시점 jango_df.shape:", jango_df.shape)
             traceback.print_exc()
         await asyncio.sleep(5)  # 재연결 대기
         print('5초간 대기')
