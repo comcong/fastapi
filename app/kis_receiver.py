@@ -16,7 +16,7 @@ from app.services import kis_auth
 
 jango_df = pd.DataFrame()
 d2_cash = int(account_balance.get_balance())
-ordered = False
+ordered = True
 sell_to_buy_order_map = {}
 # yymmdd = datetime.now().strftime("%y%m%d")
 async def start_kis_receiver():
@@ -46,19 +46,18 @@ async def start_kis_receiver():
                             jango_df = await update_price(data[['종목코드', '새현재가']].copy())
                             print('jango_df_2', '\n', jango_df.shape)
                             await send_update_balance()
+                            if jango_df.iloc[-1]["주문수량"] == jango_df.iloc[-1]["체결수량"]:
+                                ordered = False
 
                         elif (tr_id in ['H0STCNI9', 'H0STCNI0']) and (data['체결여부'].values.tolist()[0] == '2'):  # 체결통보 데이터
                             print('실시간 체결통보 수신')
                             trans_df = data.copy()
-                            # ordered = False
 
                             if trans_df['매도매수구분'].values[0] == '02':  # 매수       # 01: 매도, 02: 매수
                                 print('매수 체결통보')
                                 jango_df = await buy_update(ws=ws, jango_df=jango_df, trans_df=trans_df)
                                 print('jango_df_3', '\n', jango_df.shape)
                                 await send_update_balance(tr_id=tr_id, order_type='매수')
-                                if jango_df.iloc[-1]["주문수량"] == jango_df.iloc[-1]["체결수량"]:
-                                    ordered = False
 
                             elif trans_df['매도매수구분'].values[0] == '01': # 매도      # 01: 매도, 02: 매수
                                 print('매도 체결통보')
@@ -166,7 +165,8 @@ async def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
     if all([
         not sell_to_buy_order_map,
         profit_rate > 0.5,
-        jango_df['체결잔량'].isna().all()
+        jango_df['체결잔량'].isna().all(),
+        not ordered
     ]):
         print('매도조건_달성')
         print('ordered: ', ordered)
@@ -186,8 +186,6 @@ async def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
         )
         print('send_data', send_data)
 
-        # for json_data in send_data:
-        # asyncio.create_task(kis.sell_order(json_data))
         ordered = True
         res = await sell_order(send_data)
         print('res', res)
@@ -256,7 +254,9 @@ async def update_balance(tr_id='', order_type=''):
             jango_data = {
                 '시간': time_str,
                 '잔고': balance,
-                '주문유형': order_type
+                '주문유형': order_type,
+                '주문수량': jango_df.iloc[-1]["주문수량"],
+                '체결수량': jango_df.iloc[-1]["체결수량"]
             }
             print('jango_data: ', jango_data)
             kis_db.insert_data(jango_data)
@@ -301,7 +301,6 @@ async def sell_order(json_data):
 
         if res_data.get("rt_cd") == "0":
             print(f"[매도 주문 성공] {code} {qty}주 @ {price}원")
-            # ordered = True
             output = res_data.get("output")
             sell_order_no = output.get("ODNO")  # 매도 주문번호 받아오기
             sell_to_buy_order_map[sell_order_no] = buy_order_no  # {매도주문번호 : 매수주문번호} 맵핑
@@ -361,9 +360,6 @@ async def buy_order(json_data):
     }
 
     res_data = requests.post(url, headers=headers, data=json.dumps(body)).json()
-    if res_data.get("rt_cd") == "0":
-        # ordered = True
-        pass
     print('res_data', res_data)
 
 
@@ -463,7 +459,6 @@ async def sell_update(ws, jango_df, trans_df):
                 if tran_code not in code_list:  # 없는 종목코드 구독 해제
                     print('없는 종목코드 구독 해제')
                     await kis.subscribe(ws=ws, tr_type='2', tr_id=tr_id, code_list=[tran_code])
-                ordered = False
                 return jango_df
 
             else:
