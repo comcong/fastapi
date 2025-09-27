@@ -46,8 +46,6 @@ async def start_kis_receiver():
                             jango_df = await update_price(data[['종목코드', '새현재가']].copy())
                             print('jango_df_2', '\n', jango_df.shape)
                             await send_update_balance()
-                            if jango_df.iloc[-1]["주문수량"] == jango_df.iloc[-1]["체결수량"]:
-                                ordered = False
 
                         elif (tr_id in ['H0STCNI9', 'H0STCNI0']) and (data['체결여부'].values.tolist()[0] == '2'):  # 체결통보 데이터
                             print('실시간 체결통보 수신')
@@ -69,6 +67,8 @@ async def start_kis_receiver():
                             data['새현재가'] = data['체결단가']
                             jango_df = await update_price(data[['종목코드', '새현재가']].copy())
                             # asyncio.create_task(send_update_balance(tr_id))  # 백그라운드로 send_update_balance() 실행
+                            if jango_df.iloc[-1]["주문수량"] == jango_df.iloc[-1]["체결수량"]:
+                                ordered = False
 
 
                         jango_df = jango_df.sort_values(by='매수_주문번호')
