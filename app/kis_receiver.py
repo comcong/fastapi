@@ -256,7 +256,8 @@ async def update_balance(tr_id='', order_type=''):
                 '잔고': balance,
                 '주문유형': order_type,
                 '주문수량': jango_df.iloc[-1]["주문수량"],
-                '체결수량': jango_df.iloc[-1]["체결수량"]
+                '체결수량': jango_df.iloc[-1]["체결수량"],
+                '매수_주문번호': jango_df.iloc[-1]["매수_주문번호"],
             }
             print('jango_data: ', jango_data)
             kis_db.insert_data(jango_data)
