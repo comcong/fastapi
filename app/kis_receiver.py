@@ -16,7 +16,7 @@ from app.services import kis_auth
 
 jango_df = pd.DataFrame()
 d2_cash = int(account_balance.get_balance())
-ordered = True
+ordered = False
 sell_to_buy_order_map = {}
 # yymmdd = datetime.now().strftime("%y%m%d")
 async def start_kis_receiver():
