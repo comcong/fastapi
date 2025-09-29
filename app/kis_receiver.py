@@ -54,7 +54,7 @@ async def start_kis_receiver():
                             if trans_df['매도매수구분'].values[0] == '02':  # 매수       # 01: 매도, 02: 매수
                                 print('매수 체결통보')
                                 jango_df = await buy_update(ws=ws, jango_df=jango_df, trans_df=trans_df)
-                                print('jango_df_3', '\n', jango_df.shape)
+                                print('jango_df_3', '\n', jango_df)
                                 await send_update_balance(tr_id=tr_id, order_type='매수')
 
                             elif trans_df['매도매수구분'].values[0] == '01': # 매도      # 01: 매도, 02: 매수
@@ -118,6 +118,8 @@ async def update_price(df: pd.DataFrame = None) -> pd.DataFrame:
     print('update_price() 실행')
     global jango_df
     global ordered
+    print('jango_df', '\n', jango_df)
+    print('df', '\n', jango_df)
     jango_df = pd.merge(jango_df, df, on='종목코드', how='left')
     print('jango_df_7', '\n', jango_df.shape)
     mask = jango_df["새현재가"].notna()
@@ -366,6 +368,8 @@ async def buy_order(json_data):
 
 async def buy_update(ws, jango_df, trans_df):
     print('buy_update() 실행')
+    print('jango_df:', '\n',jango_df)
+    print('trans_df:', '\n', trans_df)
     yymmdd = datetime.now().strftime("%y%m%d")
     ord_num = yymmdd + trans_df['주문번호'].values[0]
 
